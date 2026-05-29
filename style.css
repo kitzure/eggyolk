@@ -36,20 +36,3 @@ h1 {
   font-size: 1.15rem;
   color: #bfdbfe;
 }
-
-button {
-  border: none;
-  border-radius: 999px;
-  padding: 0.8rem 1.2rem;
-  font-size: 1rem;
-  font-weight: 700;
-  background: #38bdf8;
-  color: #082f49;
-  cursor: pointer;
-  transition: transform 0.15s ease, opacity 0.2s ease;
-}
-
-button:hover {
-  transform: translateY(-1px);
-  opacity: 0.95;
-}
