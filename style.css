@@ -1,7 +1,7 @@
 :root {
   color-scheme: light;
   font-family: Arial, Helvetica, sans-serif;
-  background: linear-gradient(135deg, #0f172a, #1e293b);
+  background: #0a0a0a;
 }
 
 * {
@@ -13,16 +13,58 @@ body {
   min-height: 100vh;
   display: grid;
   place-items: center;
-  color: #e5eefb;
+  color: #fef3c7;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.about-btn {
+  display: inline-block;
+  padding: 0.5rem 1.5rem;
+  border-radius: 999px;
+  background: rgba(41, 37, 36, 0.85);
+  border: 1px solid rgba(252, 211, 77, 0.25);
+  color: #fbbf24;
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-decoration: none;
+  animation: glow 2s ease-in-out infinite;
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
+}
+
+.about-btn:hover {
+  background: rgba(252, 211, 77, 0.15);
+  border-color: rgba(252, 211, 77, 0.5);
+  color: #fcd34d;
+  animation: none;
+}
+
+@keyframes glow {
+  0%, 100% {
+    box-shadow: 0 0 6px rgba(252, 211, 77, 0.15);
+  }
+  50% {
+    box-shadow: 0 0 16px rgba(252, 211, 77, 0.35);
+  }
 }
 
 .card {
   width: min(92vw, 420px);
   padding: 2rem;
   border-radius: 18px;
-  background: rgba(15, 23, 42, 0.9);
-  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.35);
+  background: rgba(41, 37, 36, 0.95);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.40);
   text-align: center;
+}
+
+.icon {
+  font-size: 3rem;
+  margin-bottom: 0.5rem;
 }
 
 h1 {
@@ -31,8 +73,151 @@ h1 {
   font-size: 2rem;
 }
 
-#message {
-  margin: 1rem 0 1.25rem;
-  font-size: 1.15rem;
-  color: #bfdbfe;
+.toolbox {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.tool {
+  display: block;
+  padding: 1rem 1.25rem;
+  border-radius: 12px;
+  background: rgba(120, 53, 15, 0.25);
+  border: 1px solid rgba(252, 211, 77, 0.12);
+  text-decoration: none;
+  text-align: left;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.tool:hover {
+  background: rgba(120, 53, 15, 0.5);
+  border-color: rgba(252, 211, 77, 0.30);
+}
+
+.tool-name {
+  display: block;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #fef3c7;
+  margin-bottom: 0.25rem;
+}
+
+.tool-desc {
+  font-size: 0.875rem;
+  color: #d97706;
+}
+
+.about-text {
+  font-size: 1.05rem;
+  line-height: 1.6;
+  color: #d6d3d1;
+  margin-bottom: 1.5rem;
+}
+
+.back-btn {
+  display: inline-block;
+  padding: 0.5rem 1.5rem;
+  border-radius: 999px;
+  background: rgba(120, 53, 15, 0.25);
+  border: 1px solid rgba(252, 211, 77, 0.15);
+  color: #fbbf24;
+  font-size: 0.95rem;
+  text-decoration: none;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.back-btn:hover {
+  background: rgba(252, 211, 77, 0.15);
+  border-color: rgba(252, 211, 77, 0.4);
+}
+
+.spacer {
+  height: 1.25rem;
+}
+
+.contact-card {
+  padding: 1rem 1.25rem;
+  border-radius: 12px;
+  background: rgba(120, 53, 15, 0.15);
+  border: 1px solid rgba(252, 211, 77, 0.10);
+  text-align: center;
+}
+
+.contact-card h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #fbbf24;
+}
+
+.contact-links {
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.contact-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  color: #78716c;
+  text-decoration: none;
+  transition: color 0.2s, background 0.2s;
+}
+
+.contact-link:hover {
+  background: rgba(252, 211, 77, 0.10);
+  color: #fbbf24;
+}
+
+.discord-trigger {
+  position: relative;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.discord-tooltip {
+  position: absolute;
+  bottom: 110%;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.35rem 0.75rem;
+  border-radius: 8px;
+  background: rgba(41, 37, 36, 0.95);
+  border: 1px solid rgba(252, 211, 77, 0.2);
+  color: #fbbf24;
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s;
+  z-index: 10;
+}
+
+.discord-trigger:hover .discord-tooltip,
+.discord-trigger.show-tooltip .discord-tooltip {
+  opacity: 1;
+}
+
+.contact-link:hover {
+  background: rgba(252, 211, 77, 0.12);
+  border-color: rgba(252, 211, 77, 0.4);
+  color: #fcd34d;
+}
+
+.contact-icon {
+  width: 1.35rem;
+  height: 1.35rem;
+  flex-shrink: 0;
 }
