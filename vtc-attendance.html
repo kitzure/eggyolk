@@ -46,7 +46,7 @@
       </div>
     </div>
 
-    <video id="icsTutorialVideo" class="timetable-video" src="img/ics-tutorial.mp4" autoplay muted loop playsinline preload="metadata" style="display: none;"></video>
+    <video id="icsTutorialVideo" class="timetable-video" src="img/ics.mp4" muted playsinline preload="metadata" style="display: none;"></video>
 
     <script src="src/vtc-attendance.js"></script>
 
@@ -64,6 +64,7 @@
           document.body.appendChild(bd);
           video.style.display = 'block';
           video.classList.add('zoomed');
+          video.currentTime = 0;
           video.play();
 
           function closeZoom() {

@@ -283,11 +283,26 @@
           ? `<div class="vtc-skip" style="color:#f87171;">paying your hard earned money for a modules is kinda painful right?</div>`
           : "";
 
+        const totalHours = s.totalCalendarScheduledHours ?? s.calendarScheduledHours;
+        const hoursDisplay = (isCrossSem && !isOverallView && totalHours !== s.calendarScheduledHours)
+          ? `${esc(s.attendedHours)} / ${esc(s.calendarScheduledHours)} h <span style="color:#a8a29e;font-size:0.7rem;">(total: ${esc(totalHours)} h)</span>`
+          : `${esc(s.attendedHours)} / ${esc(s.calendarScheduledHours)} h`;
+
+        const lowHourWarn = ((isCrossSem ? totalHours : s.calendarScheduledHours) <= 32)
+          ? `<div class="vtc-skip" style="color:#f87171;font-weight:700;">IF YOU SKIP, YOU HAVE HIGH CHANCE YOUR ABSENT RATE WENT HIGH!</div>`
+          : "";
+
+        const lanWarn = (s.moduleCode && s.moduleCode.startsWith("LAN"))
+          ? `<div class="vtc-skip" style="color:#60a5fa;font-weight:700;">please attend every class as possible, or else you will paid money for a module to restudy like me :-(</div>`
+          : "";
+
         const absentVal = (isCrossSem && !isOverallView) ? (s.overallAbsentRate ?? s.absentRate) : s.absentRate;
         const absentLabel = (isCrossSem && !isOverallView) ? "overall absent rate" : "absent rate";
         const absentWarn = absentVal >= 30 ? ` <span class="vtc-absent-warn">≥30% = instant fail</span>` : "";
         const absentColor = absentVal >= 30 ? "#f87171" : "#fb923c";
-        const absentText = absentVal > 0 ? `<div class="vtc-absent" style="color:${absentColor};">${absentLabel}: ${absentVal}%${absentWarn}</div>` : "";
+        // show absent rate unless user attended ALL classes (0 absences)
+        const absentText = (s.absent > 0) ? `<div class="vtc-absent" style="color:${absentColor};">${absentLabel}: ${absentVal}%${absentWarn}</div>` : "";
+        const lateText = (s.lateHours > 0) ? `<div class="vtc-absent" style="color:#fbbf24;">late: ${esc(s.lateHours)} h</div>` : "";
         const crossSemTag = isCrossSem ? `<div class="vtc-cross-sem">cross sem</div>` : "";
 
         return `
@@ -297,12 +312,15 @@
               ${crossSemTag}
               <div class="vtc-muted">${esc(s.moduleText)}</div>
               ${absentText}
+              ${lateText}
               ${skipText ? `<div class="vtc-skip" style="color:${skipColor};">${esc(skipText)}</div>` : ""}
+              ${lowHourWarn}
+              ${lanWarn}
               ${failText}
             </td>
             <td>${current == null ? "-" : current + "%"}</td>
             <td>${best == null ? "-" : best + "%"}</td>
-            <td>${esc(s.attendedHours)} / ${esc(s.calendarScheduledHours)} h</td>
+            <td>${hoursDisplay}</td>
             <td>${esc(s.futureCalendarHours)} h</td>
             <td><span class="vtc-badge" style="background:${color}22;color:${color};border:1px solid ${color}44;">${esc(label)}</span></td>
           </tr>
@@ -368,6 +386,17 @@
 
     const initialSummaries = semesterSummaries[activeSemester];
     const initialRating = buildRating(initialSummaries);
+
+    // Extract unique module codes from calendar events for ICS filter
+    const getCalendarModuleCodes = () => {
+      const codes = new Set();
+      for (const ev of calendarEvents) {
+        const code = moduleCodeFromText(getEventText(ev));
+        if (code) codes.add(code);
+      }
+      return [...codes].sort();
+    };
+    const icsModules = getCalendarModuleCodes();
 
     const overlay = document.createElement("div");
     overlay.id = "vtc-attendance-dashboard-overlay";
@@ -582,6 +611,11 @@
           flex-wrap: wrap;
           justify-content: space-between;
         }
+        #vtc-attendance-dashboard-overlay .vtc-ics-actions {
+          justify-content: flex-end;
+          position: relative;
+          z-index: 150;
+        }
         #vtc-attendance-dashboard-overlay .vtc-pie {
           width: 120px;
           height: 120px;
@@ -716,6 +750,15 @@
             font-size: 0.75rem;
             padding: 5px 10px;
           }
+          #vtc-attendance-dashboard-overlay .vtc-ics-actions {
+            justify-content: flex-start;
+          }
+          #vtc-attendance-dashboard-overlay #vtc-ics-filter-panel {
+            right: auto;
+            left: 0;
+            width: 260px;
+            max-width: calc(100vw - 20px);
+          }
           #vtc-attendance-dashboard-overlay .vtc-header {
             position: relative;
           }
@@ -826,12 +869,26 @@
                   <option value="details-csv">details CSV</option>
                 </select>
                 <button id="vtc-dashboard-download-btn" type="button">download</button>
-                <button id="vtc-dashboard-ics-btn" type="button">export ICS</button>
               </div>
               <button class="vtc-close" type="button">close</button>
             </div>
           </div>
         </div>
+
+        ${icsModules.length > 0 ? `
+        <div class="vtc-ics-actions" style="display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap;">
+          <button id="vtc-dashboard-ics-btn" type="button" style="padding:8px 16px;border-radius:6px;background:rgba(120,53,15,0.5);border:1px solid rgba(252,211,77,0.25);color:#fbbf24;font-size:0.9rem;cursor:pointer;font-family:inherit;font-weight:600;">export ICS</button>
+          <div style="position:relative;display:inline-block;">
+            <button id="vtc-ics-filter-toggle" type="button" style="padding:8px 16px;border-radius:6px;background:rgba(120,53,15,0.5);border:1px solid rgba(252,211,77,0.25);color:#fbbf24;font-size:0.9rem;cursor:pointer;font-family:inherit;font-weight:600;">filter modules</button>
+            <div id="vtc-ics-filter-panel" style="display:none;position:absolute;top:calc(100% + 6px);right:0;z-index:1000;width:220px;background:rgba(10,10,10,0.98);border:1px solid rgba(252,211,77,0.2);border-radius:8px;padding:10px 12px;box-shadow:0 8px 24px rgba(0,0,0,0.5);">
+              <p style="margin:0 0 6px;font-size:0.75rem;color:#fcd34d;font-weight:600;">select modules to export</p>
+              <div id="vtc-ics-filter-list" style="display:flex;flex-direction:column;max-height:200px;overflow-y:auto;"></div>
+            </div>
+          </div>
+        </div>` : `
+        <div class="vtc-ics-actions" style="display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap;">
+          <button id="vtc-dashboard-ics-btn" type="button" style="padding:8px 16px;border-radius:6px;background:rgba(120,53,15,0.5);border:1px solid rgba(252,211,77,0.25);color:#fbbf24;font-size:0.9rem;cursor:pointer;font-family:inherit;font-weight:600;">export ICS</button>
+        </div>`}
 
         <div id="vtc-pie">
           ${buildPieChart(initialSummaries, initialRating)}
@@ -867,7 +924,22 @@
       'details-csv': () => ({ name: 'vtc-integrated-attendance-details.csv', mime: 'text/csv;charset=utf-8', content: toCsv(details) })
     };
 
-    overlay.querySelector(".vtc-close").addEventListener("click", () => overlay.remove());
+    overlay.querySelector(".vtc-close").addEventListener("click", () => {
+      overlay.remove();
+      // floating reopen button
+      let eggBtn = document.getElementById('vtc-egg-reopen');
+      if (eggBtn) eggBtn.remove();
+      eggBtn = document.createElement('button');
+      eggBtn.id = 'vtc-egg-reopen';
+      eggBtn.innerHTML = '🍳';
+      eggBtn.title = 'reopen VTC dashboard';
+      eggBtn.style.cssText = 'position:fixed;bottom:20px;right:20px;z-index:2147483646;width:48px;height:48px;border-radius:50%;background:rgba(252,211,77,0.15);border:1px solid rgba(252,211,77,0.3);color:#fcd34d;font-size:1.4rem;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);';
+      eggBtn.addEventListener('click', () => {
+        eggBtn.remove();
+        renderDashboardOverlay(semesterSummaries, details, calendarEvents);
+      });
+      document.body.appendChild(eggBtn);
+    });
     overlay.querySelector("#vtc-dashboard-download-btn").addEventListener("click", () => {
       const select = overlay.querySelector("#vtc-dashboard-download-select");
       const key = select.value;
@@ -877,8 +949,146 @@
         download(name, content, mime);
       }
     });
+    // --- ICS module filter ---
+    const icsSelected = new Set(icsModules); // default all selected
+
+    const icsFilterPanel = overlay.querySelector("#vtc-ics-filter-panel");
+    const icsFilterList = overlay.querySelector("#vtc-ics-filter-list");
+    const icsFilterToggle = overlay.querySelector("#vtc-ics-filter-toggle");
+
+    if (icsFilterList && icsModules.length > 0) {
+      // Map module codes to semesters
+      const moduleSemesterMap = {};
+      for (const semName of semesterNames) {
+        if (semName === 'Overall') continue;
+        const mods = semesterSummaries[semName] || [];
+        for (const mod of mods) {
+          if (!moduleSemesterMap[mod.moduleCode]) moduleSemesterMap[mod.moduleCode] = [];
+          if (!moduleSemesterMap[mod.moduleCode].includes(semName)) {
+            moduleSemesterMap[mod.moduleCode].push(semName);
+          }
+        }
+      }
+
+      // Group ICS modules by semester
+      const semGroups = {};
+      const unassigned = [];
+      for (const code of icsModules) {
+        const sems = moduleSemesterMap[code];
+        if (sems && sems.length > 0) {
+          const primary = sems[0];
+          if (!semGroups[primary]) semGroups[primary] = [];
+          semGroups[primary].push(code);
+        } else {
+          unassigned.push(code);
+        }
+      }
+
+      let html = '';
+      let groupIndex = 0;
+      for (const semName of semesterNames) {
+        if (semName === 'Overall') continue;
+        const codes = semGroups[semName];
+        if (!codes || codes.length === 0) continue;
+        const gid = `vtc-ics-group-${groupIndex}`;
+        html += `<div style="margin-bottom:10px;" data-ics-group="${esc(semName)}">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+            <p style="margin:0;font-size:0.7rem;color:#a8a29e;font-weight:600;">${esc(semName)}</p>
+            <div style="display:flex;gap:6px;">
+              <a href="#" class="vtc-ics-all" data-group="${esc(semName)}" style="font-size:0.8rem;color:#fbbf24;text-decoration:none;padding:2px 4px;">all</a>
+              <a href="#" class="vtc-ics-off" data-group="${esc(semName)}" style="font-size:0.8rem;color:#a8a29e;text-decoration:none;padding:2px 4px;">off</a>
+            </div>
+          </div>`;
+        for (const code of codes) {
+          html += `<label style="display:flex;align-items:center;gap:6px;padding:2px 0;cursor:pointer;font-size:0.8rem;color:#d6d3d1;">
+            <input type="checkbox" value="${esc(code)}" checked style="accent-color:#fbbf24;cursor:pointer;width:16px;height:16px;min-width:16px;">
+            <span>${esc(code)}</span>
+          </label>`;
+        }
+        html += `</div>`;
+        groupIndex++;
+      }
+      if (unassigned.length > 0) {
+        html += `<div style="margin-bottom:10px;" data-ics-group="other">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+            <p style="margin:0;font-size:0.7rem;color:#a8a29e;font-weight:600;">other</p>
+            <div style="display:flex;gap:6px;">
+              <a href="#" class="vtc-ics-all" data-group="other" style="font-size:0.8rem;color:#fbbf24;text-decoration:none;padding:2px 4px;">all</a>
+              <a href="#" class="vtc-ics-off" data-group="other" style="font-size:0.8rem;color:#a8a29e;text-decoration:none;padding:2px 4px;">off</a>
+            </div>
+          </div>`;
+        for (const code of unassigned) {
+          html += `<label style="display:flex;align-items:center;gap:6px;padding:2px 0;cursor:pointer;font-size:0.8rem;color:#d6d3d1;">
+            <input type="checkbox" value="${esc(code)}" checked style="accent-color:#fbbf24;cursor:pointer;width:16px;height:16px;min-width:16px;">
+            <span>${esc(code)}</span>
+          </label>`;
+        }
+        html += `</div>`;
+      }
+      icsFilterList.innerHTML = html;
+
+      const updateCheckboxState = (cb) => {
+        if (cb.checked) icsSelected.add(cb.value);
+        else icsSelected.delete(cb.value);
+      };
+
+      icsFilterList.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+        cb.addEventListener('change', () => updateCheckboxState(cb));
+      });
+
+      // all / off toggles per group
+      icsFilterList.querySelectorAll('.vtc-ics-all').forEach(link => {
+        link.addEventListener('click', (e) => {
+          e.preventDefault();
+          const group = link.getAttribute('data-group');
+          const container = icsFilterList.querySelector(`[data-ics-group="${group}"]`);
+          if (!container) return;
+          container.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+            cb.checked = true;
+            updateCheckboxState(cb);
+          });
+        });
+      });
+      icsFilterList.querySelectorAll('.vtc-ics-off').forEach(link => {
+        link.addEventListener('click', (e) => {
+          e.preventDefault();
+          const group = link.getAttribute('data-group');
+          const container = icsFilterList.querySelector(`[data-ics-group="${group}"]`);
+          if (!container) return;
+          container.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+            cb.checked = false;
+            updateCheckboxState(cb);
+          });
+        });
+      });
+    }
+
+    if (icsFilterToggle && icsFilterPanel) {
+      icsFilterToggle.addEventListener('click', () => {
+        const isHidden = icsFilterPanel.style.display === 'none';
+        icsFilterPanel.style.display = isHidden ? 'block' : 'none';
+        icsFilterToggle.textContent = isHidden ? 'hide filter' : 'filter modules';
+      });
+      icsFilterPanel.style.display = 'none';
+    }
+
     overlay.querySelector("#vtc-dashboard-ics-btn").addEventListener("click", () => {
-      download('vtc-calendar-events.ics', toIcs(calendarEvents), 'text/calendar;charset=utf-8');
+      const btn = overlay.querySelector("#vtc-dashboard-ics-btn");
+      const originalText = btn.textContent;
+      btn.textContent = "exporting...";
+      btn.disabled = true;
+      try {
+        const filteredEvents = calendarEvents.filter(ev => {
+          const code = moduleCodeFromText(getEventText(ev));
+          return !code || icsSelected.has(code); // keep non-module events (holidays etc.) or selected modules
+        });
+        download('vtc-calendar-events.ics', toIcs(filteredEvents), 'text/calendar;charset=utf-8');
+      } finally {
+        setTimeout(() => {
+          btn.textContent = originalText;
+          btn.disabled = false;
+        }, 1200);
+      }
     });
 
     overlay.querySelector("#vtc-semester-select").addEventListener("change", (e) => {
@@ -1420,6 +1630,10 @@
       const present = rows.filter(row => /^Present$/i.test(row.status)).length;
       const late = rows.filter(row => /^Late$/i.test(row.status)).length;
       const absent = rows.filter(row => /Absent/i.test(row.status)).length;
+      const lateMinutes = rows.reduce((sum, row) => {
+        if (!/^Late$/i.test(row.status)) return sum;
+        return sum + (lessonMinutes(row.lessonTime) - attendedMinutesFromRow(row));
+      }, 0);
 
       const calendarMinutes = calendarMinutesByModule[module.value] || 0;
       const futureMinutes = Math.max(0, calendarMinutes - recordMinutes);
@@ -1460,6 +1674,7 @@
         records: rows.length,
         present,
         late,
+        lateHours: +(lateMinutes / 60).toFixed(2),
         absent,
         absentRate,
         overallAbsentRate: absentRate,
@@ -1516,6 +1731,10 @@
       const pres = modDetails.filter(row => /^Present$/i.test(row.status)).length;
       const lat = modDetails.filter(row => /^Late$/i.test(row.status)).length;
       const abs = modDetails.filter(row => /Absent/i.test(row.status)).length;
+      const lateMins = modDetails.reduce((sum, row) => {
+        if (!/^Late$/i.test(row.status)) return sum;
+        return sum + (lessonMinutes(row.lessonTime) - attendedMinutesFromRow(row));
+      }, 0);
 
       const calMins = modCalEvents.reduce((sum, ev) => {
         const code = moduleCodeFromText(getEventText(ev));
@@ -1542,6 +1761,7 @@
         records: modDetails.length,
         present: pres,
         late: lat,
+        lateHours: +(lateMins / 60).toFixed(2),
         absent: abs,
         absentRate,
         overallAbsentRate: overallAbsentRate != null ? overallAbsentRate : absentRate,
@@ -1576,6 +1796,15 @@
       semesterSummaries[range.name] = semSums;
     }
 
+    // Add totalCalendarScheduledHours to all summaries for cross-sem display & warnings
+    const overallSums = semesterSummaries["Overall"] || [];
+    for (const semName of Object.keys(semesterSummaries)) {
+      for (const s of semesterSummaries[semName]) {
+        const overall = overallSums.find(o => o.moduleCode === s.moduleCode);
+        s.totalCalendarScheduledHours = overall ? overall.calendarScheduledHours : s.calendarScheduledHours;
+      }
+    }
+
     showStatus(`Grabbed <strong>${modules.length}</strong> module(s).<br>Showing dashboard...`, 'success');
 
     try {
@@ -1590,7 +1819,7 @@
       console.error('[VTC Attendance] Failed to store integrated data:', e);
     }
 
-    const overlay = renderDashboardOverlay(semesterSummaries);
+    const overlay = renderDashboardOverlay(semesterSummaries, details, calendarEvents);
 
     removeStatus(3000);
 
