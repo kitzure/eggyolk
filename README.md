@@ -3,7 +3,7 @@ some actual toolbox that simplify for own use
 
 ## tools
 ### VTC attendance checker
-check your attendace fucked up or not
+check your attendace
 
 ### paycheckwhen
 just a timesheet

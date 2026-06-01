@@ -23,7 +23,11 @@
             <button class="copy-bm-btn" data-target="bmCodeCombined" style="position: absolute; top: 5px; right: 5px; padding: 0.25rem 0.6rem; border-radius: 6px; background: rgba(120,53,15,0.5); border: 1px solid rgba(252,211,77,0.25); color: #fbbf24; font-size: 0.7rem; cursor: pointer; font-family: inherit;">copy</button>
           </div>
 
-          <video class="timetable-video" src="../../img/tutorial.mp4" poster="../../img/tutorial-poster.jpg" autoplay muted loop playsinline preload="metadata" style="width: 100%; max-width: 100%;"></video>
+          <video id="tutorialVideo" class="timetable-video" src="../../img/tutorial.mp4" poster="../../img/tutorial-poster.jpg" autoplay muted loop playsinline preload="metadata" style="width: 100%; max-width: 100%;"></video>
+          <div style="display: flex; gap: 0.5rem; justify-content: center; margin: 0.5rem 0;">
+            <button class="tutorial-btn" data-mode="pc" style="padding: 0.35rem 0.9rem; border-radius: 6px; background: rgba(252,211,77,0.2); border: 1px solid rgba(252,211,77,0.4); color: #fbbf24; font-size: 0.8rem; cursor: pointer; font-family: inherit;">PC</button>
+            <button class="tutorial-btn" data-mode="mobile" style="padding: 0.35rem 0.9rem; border-radius: 6px; background: rgba(252,211,77,0.05); border: 1px solid rgba(252,211,77,0.2); color: #a8a29e; font-size: 0.8rem; cursor: pointer; font-family: inherit;">Mobile</button>
+          </div>
           <p class="video-hint">tap to zoom in for tutorial</p>
 
           <!-- STEPS -->
@@ -41,7 +45,7 @@
             <div style="flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%; background: rgba(252,211,77,0.15); border: 1px solid rgba(252,211,77,0.3); display: inline-flex; align-items: center; justify-content: center; color: #fbbf24; font-weight: 700; font-size: 0.85rem;">2</div>
             <div>
               <p style="margin: 0; font-size: 0.95rem; color: #fef3c7; font-weight: 600;">click the bookmark</p>
-              <p style="margin: 0.2rem 0 0; font-size: 0.8rem; color: #a8a29e; line-height: 1.5;">a dark status card pops up. it fetches your calendar lessons in the background, then finds your attendance record page and scrapes present / late / absent status for every module.</p>
+              <p style="margin: 0.2rem 0 0; font-size: 0.8rem; color: #a8a29e; line-height: 1.5;">a dark status card pops up. it fetches your calendar lessons in the background, then finds your attendance record page and grabs your present / late / absent status for every module.</p>
             </div>
           </div>
 
@@ -49,11 +53,10 @@
             <div style="flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%; background: rgba(252,211,77,0.15); border: 1px solid rgba(252,211,77,0.3); display: inline-flex; align-items: center; justify-content: center; color: #fbbf24; font-weight: 700; font-size: 0.85rem;">3</div>
             <div>
               <p style="margin: 0; font-size: 0.95rem; color: #fef3c7; font-weight: 600;">tracker opens automatically</p>
-              <p style="margin: 0.2rem 0 0; font-size: 0.8rem; color: #a8a29e; line-height: 1.5;">the attendance tracker opens and immediately shows rates for all modules. lessons not yet covered by the attendance record are marked as "not started". if your popup blocker stops it, a copyable URL appears in the status card.</p>
+              <p style="margin: 0.2rem 0 0; font-size: 0.8rem; color: #a8a29e; line-height: 1.5;">the attendance tracker opens and immediately shows rates for all modules. thats all.</p>
             </div>
           </div>
 
-          <!-- field explanations removed - to be updated later -->
 
         </div>
       </main>
@@ -91,6 +94,39 @@
             video.classList.remove('zoomed');
             bd.remove();
           });
+        });
+      });
+
+      /* tutorial mode switcher */
+      var tutorialVideo = document.getElementById('tutorialVideo');
+      var tutorialBtns = document.querySelectorAll('.tutorial-btn');
+      tutorialBtns.forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var mode = this.getAttribute('data-mode');
+          tutorialBtns.forEach(function (b) {
+            b.style.background = 'rgba(252,211,77,0.05)';
+            b.style.borderColor = 'rgba(252,211,77,0.2)';
+            b.style.color = '#a8a29e';
+          });
+          this.style.background = 'rgba(252,211,77,0.2)';
+          this.style.borderColor = 'rgba(252,211,77,0.4)';
+          this.style.color = '#fbbf24';
+          if (mode === 'pc') {
+            tutorialVideo.src = '../../img/tutorial.mp4';
+            tutorialVideo.poster = '../../img/tutorial-poster.jpg';
+            tutorialVideo.style.width = '100%';
+            tutorialVideo.style.maxWidth = '100%';
+            tutorialVideo.style.margin = '';
+          } else {
+            tutorialVideo.src = '../../img/mobile.mp4';
+            tutorialVideo.removeAttribute('poster');
+            tutorialVideo.style.width = 'auto';
+            tutorialVideo.style.maxWidth = '260px';
+            tutorialVideo.style.display = 'block';
+            tutorialVideo.style.margin = '0 auto';
+          }
+          tutorialVideo.load();
+          tutorialVideo.play();
         });
       });
     </script>

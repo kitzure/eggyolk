@@ -15,6 +15,14 @@
           <div id="step1" style="padding: 1.5rem 0.5rem; display: flex; flex-direction: column; align-items: center; gap: 0.75rem;">
             <h1 style="margin: 0; font-size: 1.6rem; color: #fcd34d;">VTC attendance checker</h1>
             <p style="margin: 0; font-size: 0.85rem; color: #a8a29e; text-align: center; line-height: 1.5;">copy the bookmarklet -> Myportal -> inject -> done </p>
+
+            <div style="width: 100%; max-width: 320px; background: rgba(252,211,77,0.08); border: 1px solid rgba(252,211,77,0.2); border-radius: 10px; padding: 0.75rem 1rem; margin-top: 0.25rem;">
+              <p style="margin: 0; font-size: 0.8rem; color: #fcd34d; font-weight: 600; line-height: 1.4;">did you know?</p>
+              <p style="margin: 0.25rem 0 0; font-size: 0.75rem; color: #d6d3d1; line-height: 1.5;">you can export your <strong style="color:#fcd34d;">.ics</strong> and import to your Google Calendar so that you don't need to go to VTC app every time!
+                <a id="icsHowBtn" style="margin-left: 0.2rem; color: #fcd34d; font-size: 0.75rem; cursor: pointer; text-decoration: underline; vertical-align: middle;">how?</a>
+              </p>
+            </div>
+
             <a class="vtc-btn" href="src/bookmarklet/help.html" style="text-decoration:none;display:inline-flex; align-items:center; gap:0.4rem; margin-top: 0.5rem;">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;">
                 <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
@@ -38,8 +46,38 @@
       </div>
     </div>
 
+    <video id="icsTutorialVideo" class="timetable-video" src="img/ics-tutorial.mp4" autoplay muted loop playsinline preload="metadata" style="display: none;"></video>
+
     <script src="src/vtc-attendance.js"></script>
 
+    <script>
+      /* ics tutorial zoom popup */
+      (function () {
+        var video = document.getElementById('icsTutorialVideo');
+        var btn = document.getElementById('icsHowBtn');
+        if (!video || !btn) return;
+
+        btn.addEventListener('click', function () {
+          if (video.classList.contains('zoomed')) return;
+          var bd = document.createElement('div');
+          bd.className = 'video-backdrop';
+          document.body.appendChild(bd);
+          video.style.display = 'block';
+          video.classList.add('zoomed');
+          video.play();
+
+          function closeZoom() {
+            video.classList.remove('zoomed');
+            video.pause();
+            video.style.display = 'none';
+            bd.remove();
+          }
+
+          bd.addEventListener('click', closeZoom);
+          video.addEventListener('click', closeZoom);
+        });
+      })();
+    </script>
 
 </body>
 </html>

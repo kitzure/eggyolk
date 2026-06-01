@@ -108,41 +108,84 @@
 
   const escapeIcs = s => String(s ?? "").replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\n/g, "\\n").replace(/\r/g, "");
 
+  const toIcsCompactDate = raw => {
+    const s = String(raw ?? "").trim();
+    if (!s) return "";
+    // already compact
+    if (/^\d{8}T\d{6}(Z)?$/.test(s)) return s;
+    // ISO 2025-09-05T11:30:00 or 2025-09-05T11:30:00+08:00
+    const m = s.match(/^(\d{4})[-/](\d{2})[-/](\d{2})[T ](\d{2}):(\d{2}):(\d{2})/);
+    if (m) return `${m[1]}${m[2]}${m[3]}T${m[4]}${m[5]}${m[6]}`;
+    // fallback: try Date parsing
+    const d = new Date(s);
+    if (!Number.isNaN(d.getTime())) {
+      const pad = n => String(n).padStart(2, "0");
+      return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}T${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
+    }
+    return s;
+  };
+
+  const foldIcsLine = line => {
+    // RFC 5545 lines must be <= 75 octets; fold with CRLF + space
+    const result = [];
+    let bytes = 0;
+    let current = "";
+    for (const char of line) {
+      const charBytes = new Blob([char]).size;
+      if (bytes + charBytes > 75) {
+        result.push(current);
+        current = " " + char;
+        bytes = 1 + charBytes;
+      } else {
+        current += char;
+        bytes += charBytes;
+      }
+    }
+    if (current) result.push(current);
+    return result.join("\r\n");
+  };
+
   const toIcs = events => {
     const lines = [
       "BEGIN:VCALENDAR",
       "VERSION:2.0",
-      "PRODID:-//VTC Attendance Tracker//EN",
+      "PRODID:-//VTC MyPortal Export//Calendar//EN",
       "CALSCALE:GREGORIAN",
       "METHOD:PUBLISH",
-      "X-WR-CALNAME:VTC Lessons",
+      "X-WR-CALNAME:VTC Timetable",
       "X-WR-TIMEZONE:Asia/Hong_Kong"
     ];
 
-    const nowStamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+Z$/, "Z");
+    const now = new Date();
+    const nowStamp = now.toISOString().replace(/[-:]/g, "").replace(/\.\d+Z$/, "Z");
 
     for (const ev of events) {
-      const uidBase = String(ev.summary || ev.title || ev.name || ev.subject || "event").replace(/\s+/g, "_");
       const startRaw = ev.startDateTime || ev.start || ev.startTime || ev.begin || "";
       const endRaw   = ev.endDateTime   || ev.end   || ev.endTime   || ev.finish || "";
       if (!startRaw || !endRaw) continue;
 
-      let dtStart = String(startRaw).trim();
-      let dtEnd   = String(endRaw).trim();
+      const dtStart = toIcsCompactDate(startRaw);
+      const dtEnd   = toIcsCompactDate(endRaw);
+      if (!dtStart || !dtEnd) continue;
 
       const summary = escapeIcs(ev.summary || ev.title || ev.name || ev.subject || "Lesson");
       const description = escapeIcs(ev.details || ev.description || "");
       const location = escapeIcs(ev.location || "");
-      const uid = `vtc-${uidBase}-${dtStart}@vtc-attendance`;
+
+      // build a stable UID similar to the portal export
+      const uidStr = `${summary}-${dtStart}-${dtEnd}-IV`;
+      const uid = typeof btoa === "function"
+        ? btoa(unescape(encodeURIComponent(uidStr))).replace(/=+$/, "") + "@vtc-myportal"
+        : `vtc-${summary.replace(/\s+/g, "_")}-${dtStart}@vtc-myportal`;
 
       lines.push("BEGIN:VEVENT");
-      lines.push(`UID:${uid}`);
+      lines.push(foldIcsLine(`UID:${uid}`));
       lines.push(`DTSTAMP:${nowStamp}`);
-      lines.push(`DTSTART:${dtStart}`);
-      lines.push(`DTEND:${dtEnd}`);
-      lines.push(`SUMMARY:${summary}`);
-      if (description) lines.push(`DESCRIPTION:${description}`);
-      if (location) lines.push(`LOCATION:${location}`);
+      lines.push(`DTSTART;TZID=Asia/Hong_Kong:${dtStart}`);
+      lines.push(`DTEND;TZID=Asia/Hong_Kong:${dtEnd}`);
+      lines.push(foldIcsLine(`SUMMARY:${summary}`));
+      if (description) lines.push(foldIcsLine(`DESCRIPTION:${description}`));
+      if (location) lines.push(foldIcsLine(`LOCATION:${location}`));
       lines.push("END:VEVENT");
     }
 
