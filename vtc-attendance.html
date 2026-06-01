@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>VTC attendance checker</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div>
+      <div class="container">
+        <main class="card">
+          <a class="back-sq-top-left" id="mainBack" href="index.html">&larr;</a>
+
+          <div id="step1" style="padding: 1.5rem 0.5rem; display: flex; flex-direction: column; align-items: center; gap: 0.75rem;">
+            <h1 style="margin: 0; font-size: 1.6rem; color: #fcd34d;">VTC attendance checker</h1>
+            <p style="margin: 0; font-size: 0.85rem; color: #a8a29e; text-align: center; line-height: 1.5;">copy the bookmarklet -> Myportal -> inject -> done </p>
+            <a class="vtc-btn" href="src/bookmarklet/help.html" style="text-decoration:none;display:inline-flex; align-items:center; gap:0.4rem; margin-top: 0.5rem;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;">
+                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+              </svg>
+              get bookmarklet
+            </a>
+
+            <div class="disclaimer-box" style="margin-top: 0.75rem;">
+              <span>&#9888;</span>
+              <span>for reference only &mdash; not 100% confirmed. always double-check with your official attendance.</span>
+            </div>
+          </div>
+
+        </main>
+      </div>
+
+      <div style="text-align: center; margin-top: 1rem;">
+        <p style="margin: 0; font-size: 0.7rem; color: #78716c; opacity: 0.6;">made with &#10084; by <a href="https://kitzure.github.io/eggyolk/" target="_blank" style="color: #fbbf24; text-decoration: none;">CKHO and yoke</a></p>
+        <p style="margin: 0.15rem 0 0; font-size: 0.6rem; color: #78716c; opacity: 0.5;">special thanks for attendance calculator by Miklet and GG in tampermonkey</p>
+      </div>
+    </div>
+
+    <script src="src/vtc-attendance.js"></script>
+
+
+</body>
+</html>

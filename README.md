@@ -1,12 +1,12 @@
 # eggyolk
 some actual toolbox that simplify for own use
 
-## Tools
-### VTC Attendance Checker
+## tools
+### VTC attendance checker
 check your attendace fucked up or not
 
-### PaycheckWhen
+### paycheckwhen
 just a timesheet
 
-## Warning -
+## warning -
 most of the script are codevibed, so clone if u wanted if u want to see haha

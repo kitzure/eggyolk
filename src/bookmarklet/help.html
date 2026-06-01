@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>how to use — bookmarklet</title>
+    <link rel="stylesheet" href="../../style.css" />
+  </head>
+  <body>
+    <div class="container">
+      <main class="card">
+        <a class="back-sq-top-left" href="../../vtc-attendance.html">&larr;</a>
+        <div class="icon">🔗</div>
+        <h1 style="font-size: 1.65rem; margin-top: 0.4rem;">how to use the bookmarklet</h1>
+
+        <div style="text-align: left; margin-top: 1rem;">
+          <!-- COMBINED BOOKMARKLET -->
+          <p style="margin: 0 0 0.6rem; font-size: 1rem; color: #fcd34d; font-weight: 600;">copy this bookmarklet</p>
+          <p style="margin: 0 0 0.8rem; font-size: 0.8rem; color: #a8a29e; line-height: 1.5;">create a new browser bookmark and paste this into the URL field. it works on any VTC page.</p>
+
+          <div style="position: relative; margin-bottom: 1.5rem;">
+            <textarea id="bmCodeCombined" readonly rows="5" style="width: 100%; height: auto; min-height: 4.5rem; background: #0a0a0a; border: 1px solid rgba(252,211,77,0.2); border-radius: 8px; padding: 0.5rem; font-family: monospace; font-size: 0.72rem; color: #d6d3d1; resize: none; outline: none;">javascript:(function(d){var s=d.createElement('script');s.src='https://kitzure.github.io/eggyolk/src/bookmarklet/vtc-combined-grabber.js?t='+Math.floor(Date.now()/60000);d.body.append(s);})(document);</textarea>
+            <button class="copy-bm-btn" data-target="bmCodeCombined" style="position: absolute; top: 5px; right: 5px; padding: 0.25rem 0.6rem; border-radius: 6px; background: rgba(120,53,15,0.5); border: 1px solid rgba(252,211,77,0.25); color: #fbbf24; font-size: 0.7rem; cursor: pointer; font-family: inherit;">copy</button>
+          </div>
+
+          <video class="timetable-video" src="../../img/tutorial.mp4" poster="../../img/tutorial-poster.jpg" autoplay muted loop playsinline preload="metadata" style="width: 100%; max-width: 100%;"></video>
+          <p class="video-hint">tap to zoom in for tutorial</p>
+
+          <!-- STEPS -->
+          <p style="margin: 1.2rem 0 0.8rem; font-size: 1rem; color: #fef3c7; font-weight: 600;">steps</p>
+
+          <div style="display: flex; gap: 1rem; margin-bottom: 1.25rem;">
+            <div style="flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%; background: rgba(252,211,77,0.15); border: 1px solid rgba(252,211,77,0.3); display: inline-flex; align-items: center; justify-content: center; color: #fbbf24; font-weight: 700; font-size: 0.85rem;">1</div>
+            <div>
+              <p style="margin: 0; font-size: 0.95rem; color: #fef3c7; font-weight: 600;">log in to the VTC portal</p>
+              <p style="margin: 0.2rem 0 0; font-size: 0.8rem; color: #a8a29e; line-height: 1.5;">go to <a href="https://myportal.vtc.edu.hk/wps/myportal/sp/spostud/" target="_blank" style="color: #fcd34d;">myportal.vtc.edu.hk</a> and make sure you're logged in.</p>
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 1rem; margin-bottom: 1.25rem;">
+            <div style="flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%; background: rgba(252,211,77,0.15); border: 1px solid rgba(252,211,77,0.3); display: inline-flex; align-items: center; justify-content: center; color: #fbbf24; font-weight: 700; font-size: 0.85rem;">2</div>
+            <div>
+              <p style="margin: 0; font-size: 0.95rem; color: #fef3c7; font-weight: 600;">click the bookmark</p>
+              <p style="margin: 0.2rem 0 0; font-size: 0.8rem; color: #a8a29e; line-height: 1.5;">a dark status card pops up. it fetches your calendar lessons in the background, then finds your attendance record page and scrapes present / late / absent status for every module.</p>
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 1rem; margin-bottom: 0.5rem;">
+            <div style="flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%; background: rgba(252,211,77,0.15); border: 1px solid rgba(252,211,77,0.3); display: inline-flex; align-items: center; justify-content: center; color: #fbbf24; font-weight: 700; font-size: 0.85rem;">3</div>
+            <div>
+              <p style="margin: 0; font-size: 0.95rem; color: #fef3c7; font-weight: 600;">tracker opens automatically</p>
+              <p style="margin: 0.2rem 0 0; font-size: 0.8rem; color: #a8a29e; line-height: 1.5;">the attendance tracker opens and immediately shows rates for all modules. lessons not yet covered by the attendance record are marked as "not started". if your popup blocker stops it, a copyable URL appears in the status card.</p>
+            </div>
+          </div>
+
+          <!-- field explanations removed - to be updated later -->
+
+        </div>
+      </main>
+    </div>
+
+    <script>
+      document.querySelectorAll('.copy-bm-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var target = document.getElementById(this.getAttribute('data-target'));
+          if (target) {
+            target.select();
+            document.execCommand('copy');
+            this.textContent = 'copied!';
+            var self = this;
+            setTimeout(function () { self.textContent = 'copy'; }, 1500);
+          }
+        });
+      });
+
+      /* video click-to-zoom */
+      document.querySelectorAll('.timetable-video').forEach(function (video) {
+        video.style.cursor = 'pointer';
+        video.addEventListener('click', function () {
+          if (video.classList.contains('zoomed')) {
+            video.classList.remove('zoomed');
+            var bd = document.querySelector('.video-backdrop');
+            if (bd) bd.remove();
+            return;
+          }
+          var bd = document.createElement('div');
+          bd.className = 'video-backdrop';
+          document.body.appendChild(bd);
+          video.classList.add('zoomed');
+          bd.addEventListener('click', function () {
+            video.classList.remove('zoomed');
+            bd.remove();
+          });
+        });
+      });
+    </script>
+  </body>
+</html>
