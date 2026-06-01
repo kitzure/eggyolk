@@ -5,7 +5,7 @@ some actual toolbox that simplify for own use
 ### VTC attendance checker
 check your attendace
 
-### paycheckwhen
+### paycheckwhen (WIP)
 just a timesheet
 
 ## warning -
