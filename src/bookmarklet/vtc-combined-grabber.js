@@ -1478,8 +1478,20 @@
   };
 
   const timeToMinutes = value => {
-    const m = String(value || "").match(/^(\d{1,2}):(\d{2})/);
-    return m ? Number(m[1]) * 60 + Number(m[2]) : null;
+    const s = String(value || "").trim();
+    const m = s.match(/^(\d{1,2}):(\d{2})/);
+    if (!m) return null;
+    let hours = Number(m[1]);
+    const minutes = Number(m[2]);
+
+    // Handle 12-hour AM/PM format (e.g., "02:30 PM", "9:15 am")
+    if (/[pP][mM]/.test(s) && hours !== 12) {
+      hours += 12;
+    } else if (/[aA][mM]/.test(s) && hours === 12) {
+      hours = 0;
+    }
+
+    return hours * 60 + minutes;
   };
 
   const lessonMinutes = lessonTime => {
