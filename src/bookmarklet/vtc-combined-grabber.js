@@ -30,62 +30,235 @@
 
   // ── VISUAL STATUS UI ─────────────────────────────────────────────────
   let vtcStatusCard = null;
-  function showStatus(html, type) {
-    if (!vtcStatusCard) {
-      vtcStatusCard = document.createElement('div');
-      vtcStatusCard.id = 'vtc-integrated-status';
-      const st = vtcStatusCard.style;
-      st.position = 'fixed';
-      st.top = '16px';
-      st.right = '16px';
-      st.zIndex = '999999';
-      st.maxWidth = '420px';
-      st.padding = '14px 18px';
-      st.borderRadius = '12px';
-      st.fontFamily = 'Arial, Helvetica, sans-serif';
-      st.fontSize = '14px';
-      st.lineHeight = '1.5';
-      st.color = '#fef3c7';
-      st.background = 'rgba(28, 25, 23, 0.95)';
-      st.border = '1px solid rgba(252, 211, 77, 0.25)';
-      st.boxShadow = '0 10px 30px rgba(0,0,0,0.5)';
-      if (st.backdropFilter !== undefined) st.backdropFilter = 'blur(6px)';
-      st.transition = 'opacity 0.3s ease';
-      document.body.appendChild(vtcStatusCard);
+  let statusStepsContainer = null;
+  let statusHeaderIcon = null;
+  let statusHeaderTitle = null;
+  let statusSteps = [];
+  const escHtml = s => String(s ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
+
+  const statusStyles = document.createElement('style');
+  statusStyles.textContent = `
+    @keyframes vtc-pop-in {
+      0% { opacity: 0; transform: translateX(40px) scale(0.95); }
+      100% { opacity: 1; transform: translateX(0) scale(1); }
     }
-    let color = '#fbbf24';
-    if (type === 'success') color = '#34d399';
-    if (type === 'error')  color = '#f87171';
-    vtcStatusCard.innerHTML = '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">' +
-      '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:' + color + ';box-shadow:0 0 8px ' + color + ';"></span>' +
-      '<strong style="color:' + color + ';font-size:13px;letter-spacing:0.3px;">VTC Attendance Grabber</strong>' +
+    @keyframes vtc-pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.85); }
+    }
+    @keyframes vtc-spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    @keyframes vtc-step-in {
+      0% { opacity: 0; transform: translateX(-8px); }
+      100% { opacity: 1; transform: translateX(0); }
+    }
+    #vtc-integrated-status {
+      animation: vtc-pop-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    }
+    #vtc-integrated-status .vtc-status-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    #vtc-integrated-status .vtc-status-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: #fcd34d;
+      letter-spacing: 0.3px;
+    }
+    #vtc-integrated-status .vtc-status-sub {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    #vtc-integrated-status .vtc-spinner {
+      width: 18px;
+      height: 18px;
+      border: 2.5px solid rgba(252,211,77,0.2);
+      border-top-color: #fcd34d;
+      border-radius: 50%;
+      animation: vtc-spin 0.8s linear infinite;
+      flex-shrink: 0;
+    }
+    #vtc-integrated-status .vtc-check {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #34d399;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #0a0a0a;
+      font-size: 11px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+    #vtc-integrated-status .vtc-steps {
+      padding-top: 4px;
+    }
+    #vtc-integrated-status .vtc-step {
+      animation: vtc-step-in 0.25s ease forwards;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 3px 0;
+      font-size: 13px;
+      color: #a8a29e;
+    }
+    #vtc-integrated-status .vtc-step.active {
+      color: #fef3c7;
+    }
+    #vtc-integrated-status .vtc-step.done {
+      color: #34d399;
+    }
+    #vtc-integrated-status .vtc-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #a8a29e;
+      flex-shrink: 0;
+    }
+    #vtc-integrated-status .vtc-step.active .vtc-dot {
+      background: #fcd34d;
+      animation: vtc-pulse 1.2s ease-in-out infinite;
+    }
+    #vtc-integrated-status .vtc-step.done .vtc-dot {
+      background: #34d399;
+    }
+    #vtc-integrated-status .vtc-status-footer {
+      margin-top: 10px;
+      padding-top: 8px;
+      border-top: 1px solid rgba(255,255,255,0.06);
+      font-size: 11px;
+      color: #78716c;
+      text-align: center;
+      letter-spacing: 0.02em;
+    }
+  `;
+  document.head.appendChild(statusStyles);
+
+  function ensureStatusCard() {
+    if (vtcStatusCard) return;
+    vtcStatusCard = document.createElement('div');
+    vtcStatusCard.id = 'vtc-integrated-status';
+    const st = vtcStatusCard.style;
+    st.position = 'fixed';
+    st.top = '16px';
+    st.right = '16px';
+    st.zIndex = '999999';
+    st.width = '320px';
+    st.padding = '16px 20px';
+    st.borderRadius = '14px';
+    st.fontFamily = 'Arial, Helvetica, sans-serif';
+    st.fontSize = '14px';
+    st.lineHeight = '1.5';
+    st.color = '#fef3c7';
+    st.background = 'rgba(10, 10, 10, 0.97)';
+    st.border = '1px solid rgba(252, 211, 77, 0.2)';
+    st.boxShadow = '0 20px 40px rgba(0,0,0,0.6)';
+    if (st.backdropFilter !== undefined) st.backdropFilter = 'blur(10px)';
+
+    // Build static structure once
+    vtcStatusCard.innerHTML =
+      '<div class="vtc-status-header">' +
+        '<span style="font-size:16px;">&#127859;</span>' +
+        '<span class="vtc-status-title">VTC Attendance Grabber</span>' +
       '</div>' +
-      '<div>' + html + '</div>';
-    vtcStatusCard.style.opacity = '1';
+      '<div class="vtc-status-sub">' +
+        '<div id="vtc-status-icon" class="vtc-spinner"></div>' +
+        '<strong id="vtc-status-subtitle" style="color:#fbbf24;font-size:14px;letter-spacing:0.3px;">Grabbing...</strong>' +
+      '</div>' +
+      '<div id="vtc-status-steps" class="vtc-steps"></div>' +
+      '<div class="vtc-status-footer">made with &#10084; by CKHO and yoke</div>';
+
+    document.body.appendChild(vtcStatusCard);
+    statusStepsContainer = vtcStatusCard.querySelector('#vtc-status-steps');
+    statusHeaderIcon = vtcStatusCard.querySelector('#vtc-status-icon');
+    statusHeaderTitle = vtcStatusCard.querySelector('#vtc-status-subtitle');
+  }
+
+  function setStatusIconAndTitle(type) {
+    if (!statusHeaderIcon || !statusHeaderTitle) return;
+    if (type === 'success') {
+      statusHeaderIcon.className = 'vtc-check';
+      statusHeaderIcon.innerHTML = '&#10003;';
+      statusHeaderTitle.style.color = '#34d399';
+      statusHeaderTitle.textContent = 'Done!';
+    } else if (type === 'error') {
+      statusHeaderIcon.className = 'vtc-check';
+      statusHeaderIcon.style.background = '#f87171';
+      statusHeaderIcon.style.color = '#fff';
+      statusHeaderIcon.innerHTML = '&#10007;';
+      statusHeaderTitle.style.color = '#f87171';
+      statusHeaderTitle.textContent = 'Error';
+    } else {
+      statusHeaderIcon.className = 'vtc-spinner';
+      statusHeaderIcon.innerHTML = '';
+      statusHeaderIcon.style.background = '';
+      statusHeaderIcon.style.color = '';
+      statusHeaderTitle.style.color = '#fbbf24';
+      statusHeaderTitle.textContent = 'Grabbing...';
+    }
+  }
+
+  function renderSteps(type) {
+    if (!statusStepsContainer) return;
+    statusStepsContainer.innerHTML = statusSteps.map((step, i) => {
+      const isDone = i < statusSteps.length - 1 || type === 'success';
+      const isActive = i === statusSteps.length - 1 && type !== 'success' && type !== 'error';
+      const cls = isDone ? 'done' : (isActive ? 'active' : '');
+      const icon = isDone
+        ? '<div class="vtc-check">&#10003;</div>'
+        : (isActive ? '<div class="vtc-spinner"></div>' : '<div class="vtc-dot"></div>');
+      return `<div class="vtc-step ${cls}">${icon}<span>${escHtml(step)}</span></div>`;
+    }).join('');
+  }
+
+  function showStatus(title, type) {
+    ensureStatusCard();
+    setStatusIconAndTitle(type);
+    renderSteps(type);
+  }
+
+  function pushStep(text) {
+    statusSteps.push(text);
+    showStatus('Grabbing...', 'info');
   }
 
   function updateStatus(html) {
-    if (!vtcStatusCard) return;
-    const bodyDiv = vtcStatusCard.querySelector('div:nth-child(2)');
-    if (bodyDiv) bodyDiv.innerHTML = html;
+    if (statusSteps.length === 0) return;
+    statusSteps[statusSteps.length - 1] = html;
+    showStatus('Grabbing...', 'info');
   }
 
   function removeStatus(delay) {
     if (!vtcStatusCard) return;
     setTimeout(() => {
       if (vtcStatusCard) {
+        vtcStatusCard.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
         vtcStatusCard.style.opacity = '0';
+        vtcStatusCard.style.transform = 'translateX(40px) scale(0.95)';
         setTimeout(() => {
           if (vtcStatusCard && vtcStatusCard.parentNode) {
             vtcStatusCard.parentNode.removeChild(vtcStatusCard);
           }
           vtcStatusCard = null;
-        }, 300);
+          statusStepsContainer = null;
+          statusHeaderIcon = null;
+          statusHeaderTitle = null;
+          statusSteps = [];
+        }, 400);
       }
     }, delay || 0);
   }
 
-  showStatus('Starting integrated grabber...', 'info');
+  pushStep('Starting integrated grabber...');
 
   // ── HELPERS ──────────────────────────────────────────────────────────
   const download = (name, content, type) => {
@@ -242,20 +415,21 @@
       // relatable approximation using actual avg lesson duration
       let approx = "";
       const lessons = avgLessonHours > 0 ? h / avgLessonHours : 0;
+      const avgH = Math.round(avgLessonHours * 10) / 10;
       if (lessons >= 1) {
         const whole = Math.floor(lessons);
         const rem = lessons - whole;
         if (rem >= 0.75) {
-          approx = `≈ ${whole + 1} lesson${whole + 1 > 1 ? "s" : ""}`;
+          approx = `≈ ${whole + 1} lesson${whole + 1 > 1 ? "s" : ""} @ ${avgH}h`;
         } else if (rem >= 0.25) {
-          approx = `≈ ${whole + 0.5} lesson${whole + 0.5 > 1 ? "s" : ""}`;
+          approx = `≈ ${whole + 0.5} lesson${whole + 0.5 > 1 ? "s" : ""} @ ${avgH}h`;
         } else if (whole >= 1) {
-          approx = `≈ ${whole} lesson${whole > 1 ? "s" : ""}`;
+          approx = `≈ ${whole} lesson${whole > 1 ? "s" : ""} @ ${avgH}h`;
         }
       } else if (lessons >= 0.5) {
-        approx = "≈ half a lesson";
+        approx = `≈ half a lesson @ ${avgH}h`;
       } else if (h >= 0.5) {
-        approx = "≈ quarter of a lesson";
+        approx = `≈ quarter of a lesson @ ${avgH}h`;
       }
 
       return approx ? `you can skip around ${timeStr} (${approx})` : `you can skip around ${timeStr}`;
@@ -292,17 +466,18 @@
           ? `<div class="vtc-skip" style="color:#f87171;font-weight:700;">IF YOU SKIP, YOU HAVE HIGH CHANCE YOUR ABSENT RATE WENT HIGH!</div>`
           : "";
 
-        const lanWarn = (s.moduleCode && s.moduleCode.startsWith("LAN"))
-          ? `<div class="vtc-skip" style="color:#60a5fa;font-weight:700;">please attend every class as possible, or else you will paid money for a module to restudy like me :-(</div>`
-          : "";
+        const lanWarn = "";
 
-        const absentVal = (isCrossSem && !isOverallView) ? (s.overallAbsentRate ?? s.absentRate) : s.absentRate;
-        const absentLabel = (isCrossSem && !isOverallView) ? "overall absent rate" : "absent rate";
-        const absentWarn = absentVal >= 30 ? ` <span class="vtc-absent-warn">≥30% = instant fail</span>` : "";
-        const absentColor = absentVal >= 30 ? "#f87171" : "#fb923c";
-        // show absent rate unless user attended ALL classes (0 absences)
-        const absentText = (s.absent > 0) ? `<div class="vtc-absent" style="color:${absentColor};">${absentLabel}: ${absentVal}%${absentWarn}</div>` : "";
-        const lateText = (s.lateHours > 0) ? `<div class="vtc-absent" style="color:#fbbf24;">late: ${esc(s.lateHours)} h</div>` : "";
+        const effVal = (isCrossSem && !isOverallView) ? (s.overallEffectiveAbsentRate ?? s.effectiveAbsentRate) : s.effectiveAbsentRate;
+        const effLabel = (isCrossSem && !isOverallView) ? "overall absent rate" : "absent rate";
+        const absentWarn = effVal >= 30 ? ` <span class="vtc-absent-warn">≥30% = instant fail</span>` : "";
+        const absentColor = effVal >= 30 ? "#f87171" : "#fb923c";
+        // show effective absent rate when there are absences OR lates (late still impacts attendance)
+        const effDisplay = effVal != null ? Math.round(effVal) : null;
+        const absentText = ((s.absent > 0 || s.late > 0) && effVal != null) ? `<div class="vtc-absent" style="color:${absentColor};">${effLabel}: ${effVal}% (round up as ${effDisplay}%)${absentWarn}</div>` : "";
+        const lateLessons = s.avgLessonHours > 0 ? Math.round(s.lateHours / s.avgLessonHours) : 0;
+        const lateApprox = lateLessons > 0 ? ` (≈ ${lateLessons} lesson${lateLessons > 1 ? 's' : ''})` : '';
+        const lateText = (s.lateHours > 0) ? `<div class="vtc-absent" style="color:#fbbf24;">late: ${esc(s.lateHours)} h${lateApprox}</div>` : "";
         const crossSemTag = isCrossSem ? `<div class="vtc-cross-sem">cross sem</div>` : "";
 
         return `
@@ -327,8 +502,8 @@
           <tr>
             <td colspan="6">
               <div class="vtc-bar-wrap">
-                <div class="vtc-bar vtc-current" style="width:${Math.max(0, Math.min(100, current || 0))}%"></div>
-                <div class="vtc-bar vtc-best" style="width:${Math.max(0, Math.min(100, best || 0))}%"></div>
+                <div class="vtc-bar vtc-best vtc-bar-tip" data-tip="best possible rate: ${best != null ? best + '%' : 'N/A'}" style="width:${Math.max(0, Math.min(100, best || 0))}%"></div>
+                <div class="vtc-bar vtc-current vtc-bar-tip" data-tip="current rate: ${current != null ? current + '%' : 'N/A'}" style="width:${Math.max(0, Math.min(100, current || 0))}%"></div>
                 <div class="vtc-threshold"></div>
               </div>
             </td>
@@ -339,12 +514,12 @@
 
     const buildRating = summaries => {
       const total = summaries.length;
-      if (total === 0) return { label: "unknown", color: "#78716c" };
+      if (total === 0) return { label: "unknown", color: "#78716c", emoji: "&#128528;" };
       const green = summaries.filter(s => s.status70 === "OK_NOW").length;
       const red = summaries.filter(s => s.bestStatus70 === "CANNOT_REACH_70_EVEN_IF_FUTURE_PRESENT").length;
-      if (green / total >= 0.6) return { label: "excellent", color: "#34d399" };
-      if (red / total >= 0.4) return { label: "bad", color: "#f87171" };
-      return { label: "normal", color: "#fbbf24" };
+      if (green / total >= 0.6) return { label: "excellent", color: "#34d399", emoji: "&#128513;" };
+      if (red / total >= 0.4) return { label: "bad", color: "#f87171", emoji: "&#128555;" };
+      return { label: "normal", color: "#fbbf24", emoji: "&#128528;" };
     };
 
     const buildPieChart = (summaries, rating) => {
@@ -379,7 +554,7 @@
               ${grey > 0 ? `<span><span class="vtc-pie-dot" style="background:#78716c;"></span> no record: ${grey}</span>` : ''}
             </div>
           </div>
-          ${rating ? `<span class="vtc-rating" style="color:${rating.color};">${esc(rating.label)}</span>` : ''}
+          ${rating ? `<span class="vtc-rating" style="color:${rating.color};">${rating.emoji} ${esc(rating.label)}</span>` : ''}
         </div>
       `;
     };
@@ -447,13 +622,20 @@
           font-family: inherit;
           font-size: 1rem;
         }
+        #vtc-attendance-dashboard-overlay .vtc-header-actions {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          flex-wrap: wrap;
+        }
+        #vtc-attendance-dashboard-overlay .vtc-downloads-section,
         #vtc-attendance-dashboard-overlay .vtc-downloads-top {
-          margin-top: 12px;
           display: flex;
           flex-wrap: wrap;
           gap: 10px;
           align-items: center;
         }
+        #vtc-attendance-dashboard-overlay .vtc-downloads-section select,
         #vtc-attendance-dashboard-overlay .vtc-downloads-top select {
           padding: 8px 12px;
           border-radius: 6px;
@@ -464,8 +646,34 @@
           font-family: inherit;
           cursor: pointer;
         }
-        #vtc-attendance-dashboard-overlay .vtc-downloads-top button,
+        #vtc-attendance-dashboard-overlay .vtc-downloads-section button,
+        #vtc-attendance-dashboard-overlay .vtc-downloads-top button {
+          padding: 8px 16px;
+          border-radius: 6px;
+          background: rgba(120,53,15,0.5);
+          border: 1px solid rgba(252,211,77,0.25);
+          color: #fbbf24;
+          font-size: 0.9rem;
+          cursor: pointer;
+          font-family: inherit;
+          font-weight: 600;
+        }
         #vtc-attendance-dashboard-overlay #vtc-dashboard-ics-btn {
+          padding: 8px 16px;
+          border-radius: 6px;
+          background: rgba(6,78,59,0.4);
+          border: 1px solid rgba(52,211,153,0.35);
+          color: #34d399;
+          font-size: 0.9rem;
+          cursor: pointer;
+          font-family: inherit;
+          font-weight: 600;
+        }
+        #vtc-attendance-dashboard-overlay #vtc-dashboard-ics-btn:hover {
+          background: rgba(6,78,59,0.6);
+          border-color: rgba(52,211,153,0.55);
+        }
+        #vtc-attendance-dashboard-overlay #vtc-ics-filter-toggle {
           padding: 8px 16px;
           border-radius: 6px;
           background: rgba(120,53,15,0.5);
@@ -544,6 +752,7 @@
           border: 1px solid rgba(252,211,77,0.1);
           border-radius: 12px;
           overflow: hidden;
+          table-layout: fixed;
         }
         #vtc-attendance-dashboard-overlay th,
         #vtc-attendance-dashboard-overlay td {
@@ -553,6 +762,18 @@
           vertical-align: top;
           font-size: 1rem;
         }
+        #vtc-attendance-dashboard-overlay th:nth-child(1),
+        #vtc-attendance-dashboard-overlay td:nth-child(1) { width: 30%; }
+        #vtc-attendance-dashboard-overlay th:nth-child(2),
+        #vtc-attendance-dashboard-overlay td:nth-child(2) { width: 13%; }
+        #vtc-attendance-dashboard-overlay th:nth-child(3),
+        #vtc-attendance-dashboard-overlay td:nth-child(3) { width: 13%; }
+        #vtc-attendance-dashboard-overlay th:nth-child(4),
+        #vtc-attendance-dashboard-overlay td:nth-child(4) { width: 18%; }
+        #vtc-attendance-dashboard-overlay th:nth-child(5),
+        #vtc-attendance-dashboard-overlay td:nth-child(5) { width: 12%; }
+        #vtc-attendance-dashboard-overlay th:nth-child(6),
+        #vtc-attendance-dashboard-overlay td:nth-child(6) { width: 14%; }
         #vtc-attendance-dashboard-overlay th {
           background: rgba(252,211,77,0.06);
           color: #fcd34d;
@@ -578,7 +799,6 @@
           height: 10px;
           background: rgba(255,255,255,0.06);
           border-radius: 999px;
-          overflow: hidden;
         }
         #vtc-attendance-dashboard-overlay .vtc-bar {
           position: absolute;
@@ -590,10 +810,20 @@
         #vtc-attendance-dashboard-overlay .vtc-current {
           background: #60a5fa;
           opacity: .85;
+          cursor: help;
+        }
+        #vtc-attendance-dashboard-overlay .vtc-current:hover {
+          opacity: 1;
+          box-shadow: 0 0 8px rgba(96,165,250,0.5);
         }
         #vtc-attendance-dashboard-overlay .vtc-best {
           background: #22c55e;
           opacity: .35;
+          cursor: help;
+        }
+        #vtc-attendance-dashboard-overlay .vtc-best:hover {
+          opacity: .6;
+          box-shadow: 0 0 8px rgba(34,197,94,0.4);
         }
         #vtc-attendance-dashboard-overlay .vtc-threshold {
           position: absolute;
@@ -603,6 +833,32 @@
           width: 2px;
           background: #f87171;
         }
+        #vtc-attendance-dashboard-overlay .vtc-bar-tip {
+          cursor: help;
+        }
+        #vtc-attendance-dashboard-overlay .vtc-bar-tip::after {
+          content: attr(data-tip);
+          position: absolute;
+          bottom: calc(100% + 6px);
+          left: 50%;
+          transform: translateX(-50%);
+          padding: 4px 10px;
+          border-radius: 6px;
+          background: rgba(41,37,36,0.98);
+          border: 1px solid rgba(252,211,77,0.2);
+          color: #fbbf24;
+          font-size: 0.7rem;
+          font-weight: 600;
+          white-space: nowrap;
+          opacity: 0;
+          pointer-events: none;
+          transition: opacity 0.15s;
+          z-index: 2147483647;
+        }
+        #vtc-attendance-dashboard-overlay .vtc-bar-tip:hover::after,
+        #vtc-attendance-dashboard-overlay .vtc-bar-tip.show-tip::after {
+          opacity: 1;
+        }
         #vtc-attendance-dashboard-overlay .vtc-pie-wrap {
           display: flex;
           align-items: center;
@@ -611,10 +867,38 @@
           flex-wrap: wrap;
           justify-content: space-between;
         }
-        #vtc-attendance-dashboard-overlay .vtc-ics-actions {
-          justify-content: flex-end;
-          position: relative;
-          z-index: 150;
+        #vtc-attendance-dashboard-overlay .vtc-ics-section {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 10px;
+          align-items: center;
+          margin-left: auto;
+        }
+        #vtc-attendance-dashboard-overlay .vtc-export-btn {
+          padding: 8px 16px;
+          border-radius: 6px;
+          background: rgba(6,78,59,0.4);
+          border: 1px solid rgba(52,211,153,0.35);
+          color: #34d399;
+          font-size: 0.9rem;
+          cursor: pointer;
+          font-family: inherit;
+          font-weight: 600;
+        }
+        #vtc-attendance-dashboard-overlay .vtc-export-btn:hover {
+          background: rgba(6,78,59,0.6);
+          border-color: rgba(52,211,153,0.55);
+        }
+        #vtc-attendance-dashboard-overlay .vtc-export-filter-btn {
+          padding: 8px 16px;
+          border-radius: 6px;
+          background: rgba(120,53,15,0.5);
+          border: 1px solid rgba(252,211,77,0.25);
+          color: #fbbf24;
+          font-size: 0.9rem;
+          cursor: pointer;
+          font-family: inherit;
+          font-weight: 600;
         }
         #vtc-attendance-dashboard-overlay .vtc-pie {
           width: 120px;
@@ -678,7 +962,7 @@
         #vtc-attendance-dashboard-overlay .vtc-th-tip::after {
           content: attr(data-tip);
           position: absolute;
-          top: 120%;
+          top: calc(100% + 4px);
           left: 0;
           transform: none;
           padding: 8px 12px;
@@ -725,37 +1009,67 @@
             font-size: 1.15rem;
             padding-right: 60px;
           }
+          #vtc-attendance-dashboard-overlay .vtc-sticky-header {
+            padding: 12px 0 14px;
+          }
           #vtc-attendance-dashboard-overlay .vtc-header {
             flex-wrap: wrap;
+            gap: 8px;
+          }
+          #vtc-attendance-dashboard-overlay .vtc-header-actions {
+            width: 100%;
+            justify-content: space-between;
             gap: 6px;
           }
           #vtc-attendance-dashboard-overlay .vtc-muted {
             font-size: 0.6rem;
           }
+          #vtc-attendance-dashboard-overlay .vtc-downloads-section,
           #vtc-attendance-dashboard-overlay .vtc-downloads-top {
-            margin-top: 6px;
-            width: 100%;
+            margin-top: 0;
+            flex: 1;
+            min-width: 0;
+            gap: 6px;
           }
+          #vtc-attendance-dashboard-overlay .vtc-downloads-section select,
           #vtc-attendance-dashboard-overlay .vtc-downloads-top select {
             font-size: 0.75rem;
             padding: 5px 8px;
             flex: 1;
             min-width: 0;
           }
+          #vtc-attendance-dashboard-overlay .vtc-downloads-section button,
           #vtc-attendance-dashboard-overlay .vtc-downloads-top button {
             font-size: 0.75rem;
             padding: 5px 10px;
+            white-space: nowrap;
           }
           #vtc-attendance-dashboard-overlay #vtc-dashboard-ics-btn {
             font-size: 0.75rem;
             padding: 5px 10px;
+            white-space: nowrap;
           }
-          #vtc-attendance-dashboard-overlay .vtc-ics-actions {
-            justify-content: flex-start;
+          #vtc-attendance-dashboard-overlay #vtc-ics-filter-toggle {
+            font-size: 0.75rem;
+            padding: 5px 10px;
+            white-space: nowrap;
+          }
+          #vtc-attendance-dashboard-overlay .vtc-ics-section {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            align-items: center;
+            margin-left: auto;
+          }
+          #vtc-attendance-dashboard-overlay .vtc-export-btn,
+          #vtc-attendance-dashboard-overlay .vtc-export-filter-btn {
+            font-size: 0.75rem;
+            padding: 5px 10px;
+            white-space: nowrap;
           }
           #vtc-attendance-dashboard-overlay #vtc-ics-filter-panel {
-            right: auto;
-            left: 0;
+            right: 0;
+            left: auto;
             width: 260px;
             max-width: calc(100vw - 20px);
           }
@@ -763,15 +1077,18 @@
             position: relative;
           }
           #vtc-attendance-dashboard-overlay .vtc-close {
-            position: absolute;
-            top: 0;
-            right: 0;
             font-size: 0.7rem;
             padding: 5px 10px;
+            white-space: nowrap;
           }
           #vtc-attendance-dashboard-overlay .vtc-bar-wrap,
           #vtc-attendance-dashboard-overlay .vtc-bar {
             height: 5px;
+          }
+          #vtc-attendance-dashboard-overlay .vtc-bar-tip::after {
+            font-size: 0.6rem;
+            padding: 3px 8px;
+            bottom: calc(100% + 4px);
           }
           #vtc-attendance-dashboard-overlay .vtc-cards {
             grid-template-columns: repeat(2, 1fr);
@@ -785,23 +1102,46 @@
           }
           #vtc-attendance-dashboard-overlay th,
           #vtc-attendance-dashboard-overlay td {
-            padding: 5px 3px;
-            font-size: 0.68rem;
+            padding: 4px 2px;
+            font-size: 0.62rem;
           }
           #vtc-attendance-dashboard-overlay table {
             display: table;
-            table-layout: auto;
+            table-layout: fixed;
             width: 100%;
+            min-width: 520px;
             white-space: normal;
             border-radius: 8px;
           }
-          /* hide best-possible (col 3) and future (col 5) on mobile */
-          #vtc-attendance-dashboard-overlay th:nth-child(3),
-          #vtc-attendance-dashboard-overlay td:nth-child(3),
-          #vtc-attendance-dashboard-overlay th:nth-child(5),
-          #vtc-attendance-dashboard-overlay td:nth-child(5) {
-            display: none;
+          #vtc-attendance-dashboard-overlay .vtc-table-scroll {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            margin: 0 -10px;
+            padding: 0 10px;
           }
+          #vtc-attendance-dashboard-overlay .vtc-table-scroll::-webkit-scrollbar {
+            height: 4px;
+          }
+          #vtc-attendance-dashboard-overlay .vtc-table-scroll::-webkit-scrollbar-track {
+            background: rgba(255,255,255,0.05);
+            border-radius: 4px;
+          }
+          #vtc-attendance-dashboard-overlay .vtc-table-scroll::-webkit-scrollbar-thumb {
+            background: rgba(252,211,77,0.3);
+            border-radius: 4px;
+          }
+          #vtc-attendance-dashboard-overlay th:nth-child(1),
+          #vtc-attendance-dashboard-overlay td:nth-child(1) { width: 28%; }
+          #vtc-attendance-dashboard-overlay th:nth-child(2),
+          #vtc-attendance-dashboard-overlay td:nth-child(2) { width: 12%; }
+          #vtc-attendance-dashboard-overlay th:nth-child(3),
+          #vtc-attendance-dashboard-overlay td:nth-child(3) { width: 12%; }
+          #vtc-attendance-dashboard-overlay th:nth-child(4),
+          #vtc-attendance-dashboard-overlay td:nth-child(4) { width: 20%; }
+          #vtc-attendance-dashboard-overlay th:nth-child(5),
+          #vtc-attendance-dashboard-overlay td:nth-child(5) { width: 12%; }
+          #vtc-attendance-dashboard-overlay th:nth-child(6),
+          #vtc-attendance-dashboard-overlay td:nth-child(6) { width: 16%; }
           #vtc-attendance-dashboard-overlay .vtc-badge {
             font-size: 0.6rem;
             padding: 2px 6px;
@@ -857,56 +1197,61 @@
               <h1>VTC Attendance Dashboard</h1>
               <div class="vtc-muted">blue = current rate, green = best possible rate, red line = 70%</div>
             </div>
-            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <div class="vtc-header-actions">
               <select id="vtc-semester-select" class="vtc-semester-select">
                 ${semesterNames.map(name => `<option value="${esc(name)}" ${name === activeSemester ? 'selected' : ''}>${esc(name)}</option>`).join('')}
               </select>
-              <div class="vtc-downloads-top" style="margin-top:0;">
-                <select id="vtc-dashboard-download-select">
-                  <option value="summary-json">summary JSON</option>
-                  <option value="details-json">details JSON</option>
-                  <option value="summary-csv">summary CSV</option>
-                  <option value="details-csv">details CSV</option>
-                </select>
-                <button id="vtc-dashboard-download-btn" type="button">download</button>
-              </div>
               <button class="vtc-close" type="button">close</button>
             </div>
           </div>
         </div>
 
-        ${icsModules.length > 0 ? `
-        <div class="vtc-ics-actions" style="display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap;">
-          <button id="vtc-dashboard-ics-btn" type="button" style="padding:8px 16px;border-radius:6px;background:rgba(120,53,15,0.5);border:1px solid rgba(252,211,77,0.25);color:#fbbf24;font-size:0.9rem;cursor:pointer;font-family:inherit;font-weight:600;">export ICS</button>
-          <div style="position:relative;display:inline-block;">
-            <button id="vtc-ics-filter-toggle" type="button" style="padding:8px 16px;border-radius:6px;background:rgba(120,53,15,0.5);border:1px solid rgba(252,211,77,0.25);color:#fbbf24;font-size:0.9rem;cursor:pointer;font-family:inherit;font-weight:600;">filter modules</button>
-            <div id="vtc-ics-filter-panel" style="display:none;position:absolute;top:calc(100% + 6px);right:0;z-index:1000;width:220px;background:rgba(10,10,10,0.98);border:1px solid rgba(252,211,77,0.2);border-radius:8px;padding:10px 12px;box-shadow:0 8px 24px rgba(0,0,0,0.5);">
-              <p style="margin:0 0 6px;font-size:0.75rem;color:#fcd34d;font-weight:600;">select modules to export</p>
-              <div id="vtc-ics-filter-list" style="display:flex;flex-direction:column;max-height:200px;overflow-y:auto;"></div>
-            </div>
-          </div>
-        </div>` : `
-        <div class="vtc-ics-actions" style="display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap;">
-          <button id="vtc-dashboard-ics-btn" type="button" style="padding:8px 16px;border-radius:6px;background:rgba(120,53,15,0.5);border:1px solid rgba(252,211,77,0.25);color:#fbbf24;font-size:0.9rem;cursor:pointer;font-family:inherit;font-weight:600;">export ICS</button>
-        </div>`}
-
         <div id="vtc-pie">
           ${buildPieChart(initialSummaries, initialRating)}
         </div>
 
-        <table>
-          <thead>
-            <tr>
-              <th><span class="vtc-th-tip" data-tip="module code and name">module &#9432;</span></th>
-              <th><span class="vtc-th-tip" data-tip="your current attendance rate based on recorded hours"><span class="vtc-th-long">current</span><span class="vtc-th-short">cur</span> &#9432;</span></th>
-              <th><span class="vtc-th-tip" data-tip="max possible rate if you attend every future lesson"><span class="vtc-th-long">best possible</span><span class="vtc-th-short">best</span> &#9432;</span></th>
-              <th><span class="vtc-th-tip" data-tip="attended hours / total scheduled hours from calendar">hours &#9432;</span></th>
-              <th><span class="vtc-th-tip" data-tip="hours for lessons that have not happened yet"><span class="vtc-th-long">future</span><span class="vtc-th-short">fut</span> &#9432;</span></th>
-              <th><span class="vtc-th-tip" data-tip="passed = above 70%, almost pass = below 70% but can reach, failed = cannot reach 70% even if all future attended, no record = no attendance data">status &#9432;</span></th>
-            </tr>
-          </thead>
-          <tbody id="vtc-table-body">${buildRows(initialSummaries)}</tbody>
-        </table>
+        <div style="display:flex;gap:10px;align-items:center;margin:16px 0;flex-wrap:wrap;">
+          <div class="vtc-downloads-section" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+            <select id="vtc-dashboard-download-select">
+              <option value="summary-json">summary JSON</option>
+              <option value="details-json">details JSON</option>
+              <option value="summary-csv">summary CSV</option>
+              <option value="details-csv">details CSV</option>
+            </select>
+            <button id="vtc-dashboard-download-btn" type="button">download</button>
+          </div>
+
+          ${icsModules.length > 0 ? `
+          <div class="vtc-ics-section">
+            <button id="vtc-dashboard-ics-btn" class="vtc-export-btn" type="button" title="download an .ics file you can import into Google Calendar, Apple Calendar, or Outlook">export ICS</button>
+            <div style="position:relative;display:inline-block;">
+              <button id="vtc-ics-filter-toggle" class="vtc-export-filter-btn" type="button">filter modules</button>
+              <div id="vtc-ics-filter-panel" style="display:none;position:absolute;top:calc(100% + 6px);right:0;z-index:1000;width:220px;background:rgba(10,10,10,0.98);border:1px solid rgba(252,211,77,0.2);border-radius:8px;padding:10px 12px;box-shadow:0 8px 24px rgba(0,0,0,0.5);">
+                <p style="margin:0 0 6px;font-size:0.75rem;color:#fcd34d;font-weight:600;">select modules to export</p>
+                <div id="vtc-ics-filter-list" style="display:flex;flex-direction:column;max-height:200px;overflow-y:auto;"></div>
+              </div>
+            </div>
+          </div>` : `
+          <div class="vtc-ics-section">
+            <button id="vtc-dashboard-ics-btn" class="vtc-export-btn" type="button" title="download an .ics file you can import into Google Calendar, Apple Calendar, or Outlook">export ICS</button>
+          </div>`}
+        </div>
+
+        <div class="vtc-table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th><span class="vtc-th-tip" data-tip="module code and name">module &#9432;</span></th>
+                <th><span class="vtc-th-tip" data-tip="your current attendance rate based on recorded hours"><span class="vtc-th-long">current</span><span class="vtc-th-short">cur</span> &#9432;</span></th>
+                <th><span class="vtc-th-tip" data-tip="max possible rate if you attend every future lesson"><span class="vtc-th-long">best possible</span><span class="vtc-th-short">best</span> &#9432;</span></th>
+                <th><span class="vtc-th-tip" data-tip="attended hours / total scheduled hours from calendar">hours &#9432;</span></th>
+                <th><span class="vtc-th-tip" data-tip="hours for lessons that have not happened yet"><span class="vtc-th-long">future</span><span class="vtc-th-short">fut</span> &#9432;</span></th>
+                <th><span class="vtc-th-tip" data-tip="passed = above 70%, almost pass = below 70% but can reach, failed = cannot reach 70% even if all future attended, no record = no attendance data">status &#9432;</span></th>
+              </tr>
+            </thead>
+            <tbody id="vtc-table-body">${buildRows(initialSummaries)}</tbody>
+          </table>
+        </div>
 
         <div style="margin-top: 32px; padding-top: 16px; border-top: 1px solid rgba(252,211,77,0.08); text-align: center; font-size: 0.8rem; color: #78716c;">
           <p style="margin: 0;">made with &#10084; by CKHO and yoke</p>
@@ -1101,14 +1446,18 @@
     // tap/click tooltips on mobile (hover doesn't exist)
     overlay.addEventListener("click", (e) => {
       const tip = e.target.closest(".vtc-th-tip");
-      if (!tip) {
-        overlay.querySelectorAll(".vtc-th-tip.show-tip").forEach(el => el.classList.remove("show-tip"));
+      const barTip = e.target.closest(".vtc-bar-tip");
+      const targetTip = tip || barTip;
+
+      if (!targetTip) {
+        overlay.querySelectorAll(".vtc-th-tip.show-tip, .vtc-bar-tip.show-tip").forEach(el => el.classList.remove("show-tip"));
         return;
       }
-      overlay.querySelectorAll(".vtc-th-tip.show-tip").forEach(el => {
-        if (el !== tip) el.classList.remove("show-tip");
+
+      overlay.querySelectorAll(".vtc-th-tip.show-tip, .vtc-bar-tip.show-tip").forEach(el => {
+        if (el !== targetTip) el.classList.remove("show-tip");
       });
-      tip.classList.toggle("show-tip");
+      targetTip.classList.toggle("show-tip");
     });
 
     return overlay;
@@ -1255,7 +1604,7 @@
 
     const calendarUrl = findMenuUrlByText("Calendar");
     console.log("Fetching Calendar page:", calendarUrl);
-    updateStatus('Finding calendar API URL...<br><span style="font-size:12px;color:#78716c;">via Calendar menu</span>');
+    pushStep('Finding calendar API...');
 
     const res = await fetch(calendarUrl, {
       method: "GET",
@@ -1318,7 +1667,7 @@
       const chunkEnd = next < RANGE_END ? next : RANGE_END;
 
       console.log(`Calendar fetch: ${ymd(cursor)} -> ${ymd(chunkEnd)}`);
-      updateStatus(`Fetching calendar...<br><span style="font-size:12px;color:#78716c;">${ymd(cursor)} &rarr; ${ymd(chunkEnd)}</span>`);
+      updateStatus(`Fetching calendar ${ymd(cursor)} -> ${ymd(chunkEnd)}`);
       all.push(...normalize(await fetchRange(cursor, chunkEnd)));
       await sleep(150);
     }
@@ -1374,7 +1723,7 @@
   const findClassAttendancePage = async () => {
     const profileUrl = findMenuUrlByText("Profile");
     console.log("Loading Profile in hidden iframe:", profileUrl);
-    updateStatus('Finding Class Attendance page...<br><span style="font-size:12px;color:#78716c;">via Profile iframe</span>');
+    pushStep('Finding Class Attendance page...');
 
     const iframe = await loadIframe(profileUrl);
     let doc = iframe.contentDocument;
@@ -1559,7 +1908,7 @@
 
   // ── MAIN ─────────────────────────────────────────────────────────────
   (async () => {
-    showStatus('Fetching calendar events...', 'info');
+    pushStep('Fetching calendar events...');
 
     const calendarEvents = await fetchCalendarEvents();
 
@@ -1567,7 +1916,7 @@
     console.log("Sample calendar event:", calendarEvents[0]);
     console.log("Sample event code:", moduleCodeFromText(getEventText(calendarEvents[0])));
     console.log("Sample event minutes:", eventMinutes(calendarEvents[0]));
-    showStatus(`Fetched <strong>${calendarEvents.length}</strong> calendar events.<br>Now finding attendance page...`, 'info');
+    pushStep(`Found ${calendarEvents.length} calendar events`);
 
     const calendarMinutesByModule = {};
     const calendarDebugRows = [];
@@ -1609,7 +1958,7 @@
 
     console.log(`Modules found: ${modules.length}`);
     console.table(modules);
-    showStatus(`Found <strong>${modules.length}</strong> module(s).<br>Grabbing attendance records...`, 'info');
+    pushStep(`Grabbing ${modules.length} module(s)...`);
 
     const summaries = [];
     const details = [];
@@ -1617,7 +1966,7 @@
     for (let idx = 0; idx < modules.length; idx++) {
       const module = modules[idx];
       console.log("Attendance module:", module.text);
-      updateStatus(`Grabbing attendance...<br><span style="font-size:12px;color:#78716c;">${idx + 1}/${modules.length}: ${module.text}</span>`);
+      updateStatus(`${idx + 1}/${modules.length}: ${module.text}`);
 
       html = await submitModule(html, module);
       doc = parseHtml(html);
@@ -1666,6 +2015,7 @@
       const modEvents = calendarEvents.filter(e => moduleCodeFromText(getEventText(e)) === module.value);
       const totalLessons = modEvents.length > 0 ? modEvents.length : rows.length;
       const absentRate = totalLessons > 0 ? +((absent / totalLessons) * 100).toFixed(1) : 0;
+      const effectiveAbsentRate = calHours > 0 ? +(((recordMinutes - attendedMinutes) / 60) / calHours * 100).toFixed(1) : 0;
       const avgLessonHours = modEvents.length > 0 ? +(calHours / modEvents.length).toFixed(1) : 2;
 
       const summary = {
@@ -1678,6 +2028,8 @@
         absent,
         absentRate,
         overallAbsentRate: absentRate,
+        effectiveAbsentRate,
+        overallEffectiveAbsentRate: effectiveAbsentRate,
         attendanceRecordHours: +(recordMinutes / 60).toFixed(2),
         attendedHours: attHours,
         deductedHours: +((recordMinutes - attendedMinutes) / 60).toFixed(2),
@@ -1709,7 +2061,7 @@
     console.table(summaries);
 
     // ── SEMESTER BREAKDOWN ─────────────────────────────────────────────
-    showStatus('Detecting semesters from calendar...', 'info');
+    pushStep('Detecting semesters...');
     const semesterRanges = estimateSemesterRanges(calendarEvents);
 
     const isDetailInRange = (detail, range) => {
@@ -1753,7 +2105,19 @@
       const skipHours = futHours > 0 ? Math.max(0, +(futHours - neededHours).toFixed(2)) : 0;
       const totalLessons = modCalEvents.length > 0 ? modCalEvents.length : modDetails.length;
       const absentRate = totalLessons > 0 ? +((abs / totalLessons) * 100).toFixed(1) : 0;
+      const effectiveAbsentRate = calHours > 0 ? +(((recMins - attMins) / 60) / calHours * 100).toFixed(1) : 0;
       const avgLessonHours = modCalEvents.length > 0 ? +(calHours / modCalEvents.length).toFixed(1) : 2;
+
+      // Calculate overall effective absent rate using all details and all calendar events
+      const allModDets = details.filter(d => d.moduleCode === moduleCode);
+      const allRecMins = allModDets.reduce((sum, row) => sum + lessonMinutes(row.lessonTime), 0);
+      const allAttMins = allModDets.reduce((sum, row) => sum + attendedMinutesFromRow(row), 0);
+      const allCalMins = calendarEvents.reduce((sum, ev) => {
+        const code = moduleCodeFromText(getEventText(ev));
+        if (code !== moduleCode) return sum;
+        return sum + eventMinutes(ev);
+      }, 0);
+      const overallEffectiveAbsentRate = allCalMins > 0 ? +(((allRecMins - allAttMins) / 60) / (allCalMins / 60) * 100).toFixed(1) : 0;
 
       return {
         moduleCode,
@@ -1765,6 +2129,8 @@
         absent: abs,
         absentRate,
         overallAbsentRate: overallAbsentRate != null ? overallAbsentRate : absentRate,
+        effectiveAbsentRate,
+        overallEffectiveAbsentRate,
         attendanceRecordHours: +(recMins / 60).toFixed(2),
         attendedHours: attHours,
         deductedHours: +((recMins - attMins) / 60).toFixed(2),
@@ -1805,7 +2171,7 @@
       }
     }
 
-    showStatus(`Grabbed <strong>${modules.length}</strong> module(s).<br>Showing dashboard...`, 'success');
+    showStatus(`Done! Grabbed ${modules.length} module(s)`, 'success');
 
     try {
       localStorage.setItem('vtc-integrated-data', JSON.stringify({
@@ -1826,6 +2192,7 @@
     console.log("Done.");
   })().catch(e => {
     console.error('[VTC Attendance] Grabber error:', e);
-    showStatus(`<strong>something went wrong.</strong><br><span style="font-size:12px;color:#fca5a5;">${e.message || 'unknown error'}</span>`, 'error');
+    pushStep(`Error: ${e.message || 'unknown error'}`);
+    showStatus('Something went wrong', 'error');
   });
 })();
