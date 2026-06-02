@@ -373,6 +373,71 @@
     const semesterNames = Object.keys(semesterSummaries);
     const activeSemester = semesterNames[0];
     let currentSemester = activeSemester;
+    let editMode = false;
+    const manualOverrides = {};
+
+    const applyOverrides = (summaries, semName) => {
+      if (!summaries) return summaries;
+      return summaries.map(s => {
+        const key = `${semName}::${s.moduleCode}`;
+        const override = manualOverrides[key];
+        if (!override) return s;
+
+        // support editing either per-sem calendar hours or the total calendar hours
+        let newCalHours = s.calendarScheduledHours;
+        let newTotalHours = s.totalCalendarScheduledHours ?? s.calendarScheduledHours;
+
+        if (override.calendarScheduledHours != null) {
+          newCalHours = +override.calendarScheduledHours;
+        } else if (override.totalCalendarScheduledHours != null) {
+          newTotalHours = +override.totalCalendarScheduledHours;
+          // if we have an original total, preserve the same ratio for this semester
+          if (s.totalCalendarScheduledHours && s.totalCalendarScheduledHours > 0) {
+            const ratio = s.calendarScheduledHours / s.totalCalendarScheduledHours;
+            newCalHours = +(ratio * newTotalHours).toFixed(2);
+          } else {
+            // fallback: if no original total, apply total as this semester's hours
+            newCalHours = newTotalHours;
+          }
+        } else {
+          return s;
+        }
+        const attHours = s.attendedHours;
+        const recHours = s.attendanceRecordHours;
+        const deductedHours = s.deductedHours;
+        const recordMinutes = recHours * 60;
+        const calendarMinutes = newCalHours * 60;
+        const futureMinutes = Math.max(0, calendarMinutes - recordMinutes);
+        const futureHours = +(futureMinutes / 60).toFixed(2);
+
+        const attendedMinutes = attHours * 60;
+        const currentHourRate = recordMinutes ? +((attendedMinutes / recordMinutes) * 100).toFixed(2) : s.currentHourRate;
+        const bestPossibleFullTermRate = calendarMinutes ? +(((attendedMinutes + futureMinutes) / calendarMinutes) * 100).toFixed(2) : null;
+
+        const neededHours = Math.max(0, (THRESHOLD / 100) * newCalHours - attHours);
+        const skipHours = futureHours > 0 ? Math.max(0, +(futureHours - neededHours).toFixed(2)) : 0;
+
+        const effectiveAbsentRate = newCalHours > 0 ? +((deductedHours / newCalHours) * 100).toFixed(1) : 0;
+
+        const status70 = currentHourRate == null ? "NO_RECORD" : currentHourRate < THRESHOLD ? "BELOW_70_NOW" : "OK_NOW";
+        const bestStatus70 = bestPossibleFullTermRate == null ? "NO_CALENDAR_MATCH" : bestPossibleFullTermRate < THRESHOLD ? "CANNOT_REACH_70_EVEN_IF_FUTURE_PRESENT" : "CAN_REACH_OR_KEEP_70_IF_FUTURE_PRESENT";
+
+        return {
+          ...s,
+          calendarScheduledHours: newCalHours,
+          totalCalendarScheduledHours: newTotalHours,
+          futureCalendarHours: futureHours,
+          currentHourRate,
+          bestPossibleFullTermRate,
+          skipAllowanceHours: skipHours,
+          effectiveAbsentRate,
+          overallEffectiveAbsentRate: effectiveAbsentRate,
+          status70,
+          bestStatus70,
+          _manualOverride: true
+        };
+      });
+    };
 
     const esc = value => String(value ?? "")
       .replaceAll("&", "&amp;")
@@ -453,14 +518,18 @@
         const skipText = (!isFailed && s.futureCalendarHours > 0 && s.skipAllowanceHours != null) ? fmtSkip(s.skipAllowanceHours, s.avgLessonHours || 2) : "";
         const skipColor = (s.skipAllowanceHours || 0) > 0 ? "#34d399" : "#f87171";
 
-        const failText = isFailed
-          ? `<div class="vtc-skip" style="color:#f87171;">paying your hard earned money for a modules is kinda painful right?</div>`
-          : "";
+        // Removed the earlier cheeky message; keep empty when failed
+        const failText = "";
 
         const totalHours = s.totalCalendarScheduledHours ?? s.calendarScheduledHours;
-        const hoursDisplay = (isCrossSem && !isOverallView && totalHours !== s.calendarScheduledHours)
-          ? `${esc(s.attendedHours)} / ${esc(s.calendarScheduledHours)} h <span style="color:#a8a29e;font-size:0.7rem;">(total: ${esc(totalHours)} h)</span>`
-          : `${esc(s.attendedHours)} / ${esc(s.calendarScheduledHours)} h`;
+        const editIndicator = s._manualOverride ? `<span title="manually adjusted" style="color:#fbbf24;margin-left:4px;">&#9998;</span>` : "";
+        const baseHoursDisplay = (isCrossSem && !isOverallView && totalHours !== s.calendarScheduledHours)
+          ? `${esc(s.attendedHours)} / ${esc(s.calendarScheduledHours)} h${editIndicator} <span style="color:#a8a29e;font-size:0.7rem;">(total: ${esc(totalHours)} h)</span>`
+          : `${esc(s.attendedHours)} / ${esc(s.calendarScheduledHours)} h${editIndicator}`;
+        // In edit mode we allow editing the TOTAL hours only. Keep the per-sem display and show an input for total.
+        const hoursDisplay = editMode
+          ? `${baseHoursDisplay} <span style="margin-left:8px;color:#a8a29e;font-size:0.9rem;">total: <input type="number" class="vtc-hours-input" data-module="${esc(s.moduleCode)}" data-field="total" value="${esc(totalHours)}" step="0.01" style="width:90px;background:#141414;border:1px solid rgba(252,211,77,0.3);color:#fcd34d;border-radius:4px;padding:4px 6px;font-family:inherit;font-size:0.9rem;"> h</span>`
+          : baseHoursDisplay;
 
         const lowHourWarn = ((isCrossSem ? totalHours : s.calendarScheduledHours) <= 32)
           ? `<div class="vtc-skip" style="color:#f87171;font-weight:700;">IF YOU SKIP, YOU HAVE HIGH CHANCE YOUR ABSENT RATE WENT HIGH!</div>`
@@ -622,11 +691,30 @@
           font-family: inherit;
           font-size: 1rem;
         }
+        /* separate class for the edit button to avoid collisions with other site handlers
+           keep identical styling so appearance is unchanged */
+        #vtc-attendance-dashboard-overlay .vtc-edit {
+          background: rgba(251,191,36,0.15);
+          color: #fbbf24;
+          border: 1px solid rgba(252,211,77,0.3);
+          border-radius: 8px;
+          padding: 10px 20px;
+          cursor: pointer;
+          font-weight: 700;
+          font-family: inherit;
+          font-size: 1rem;
+        }
         #vtc-attendance-dashboard-overlay .vtc-header-actions {
           display: flex;
           align-items: center;
           gap: 10px;
           flex-wrap: wrap;
+        }
+        #vtc-attendance-dashboard-overlay .vtc-actions-right {
+          display: flex;
+          gap: 8px;
+          align-items: center;
+          margin-left: 8px;
         }
         #vtc-attendance-dashboard-overlay .vtc-downloads-section,
         #vtc-attendance-dashboard-overlay .vtc-downloads-top {
@@ -702,84 +790,45 @@
           color: #fb923c;
           letter-spacing: 0.02em;
         }
+        #vtc-attendance-dashboard-overlay .vtc-lesson-impact {
+          font-size: 0.68rem;
+          margin-top: 4px;
+          color: #fbbf24;
+          font-weight: 700;
+          opacity: 0.95;
+        }
+        @media (max-width: 768px) {
+          #vtc-attendance-dashboard-overlay .vtc-lesson-impact {
+            display: none;
+          }
+          #vtc-attendance-dashboard-overlay .vtc-actions-right {
+            margin-left: 0;
+            gap: 6px;
+          }
+          #vtc-attendance-dashboard-overlay .vtc-edit,
+          #vtc-attendance-dashboard-overlay .vtc-close {
+            padding: 5px 8px;
+            font-size: 0.72rem;
+          }
+        }
+        /* Desktop layout: use the original centered dashboard column
+           (restores previous web version appearance). */
+        #vtc-attendance-dashboard-overlay.vtc-mode-desktop .vtc-dashboard {
+          padding: 40px 48px;
+          max-width: 1200px;
+          margin: 0 auto;
+          width: auto;
+        }
+        /* Ensure dashboard uses border-box so padding doesn't reduce inner width */
+        #vtc-attendance-dashboard-overlay.vtc-mode-desktop .vtc-dashboard {
+          box-sizing: border-box;
+        }
         #vtc-attendance-dashboard-overlay .vtc-absent-warn {
           font-weight: 700;
           text-transform: uppercase;
           font-size: 0.6rem;
           letter-spacing: 0.04em;
         }
-        #vtc-attendance-dashboard-overlay .vtc-cross-sem {
-          display: inline-block;
-          font-size: 0.6rem;
-          font-weight: 700;
-          text-transform: uppercase;
-          letter-spacing: 0.05em;
-          color: #fbbf24;
-          background: rgba(251,191,36,0.1);
-          border: 1px solid rgba(251,191,36,0.3);
-          border-radius: 4px;
-          padding: 1px 6px;
-          margin-top: 3px;
-        }
-        #vtc-attendance-dashboard-overlay .vtc-cards {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-          gap: 16px;
-          margin: 24px 0;
-        }
-        #vtc-attendance-dashboard-overlay .vtc-card {
-          background: rgba(0,0,0,0.3);
-          border: 1px solid rgba(252,211,77,0.12);
-          border-radius: 12px;
-          padding: 18px;
-        }
-        #vtc-attendance-dashboard-overlay .vtc-card .label {
-          color: #a8a29e;
-          font-size: 0.8rem;
-          text-transform: lowercase;
-          letter-spacing: 0.05em;
-        }
-        #vtc-attendance-dashboard-overlay .vtc-card .num {
-          font-size: 2rem;
-          font-weight: 700;
-          color: #fcd34d;
-          margin-top: 6px;
-        }
-        #vtc-attendance-dashboard-overlay table {
-          width: 100%;
-          border-collapse: collapse;
-          background: rgba(0,0,0,0.25);
-          border: 1px solid rgba(252,211,77,0.1);
-          border-radius: 12px;
-          overflow: hidden;
-          table-layout: fixed;
-        }
-        #vtc-attendance-dashboard-overlay th,
-        #vtc-attendance-dashboard-overlay td {
-          padding: 14px 16px;
-          border-bottom: 1px solid rgba(252,211,77,0.08);
-          text-align: left;
-          vertical-align: top;
-          font-size: 1rem;
-        }
-        #vtc-attendance-dashboard-overlay th:nth-child(1),
-        #vtc-attendance-dashboard-overlay td:nth-child(1) { width: 30%; }
-        #vtc-attendance-dashboard-overlay th:nth-child(2),
-        #vtc-attendance-dashboard-overlay td:nth-child(2) { width: 13%; }
-        #vtc-attendance-dashboard-overlay th:nth-child(3),
-        #vtc-attendance-dashboard-overlay td:nth-child(3) { width: 13%; }
-        #vtc-attendance-dashboard-overlay th:nth-child(4),
-        #vtc-attendance-dashboard-overlay td:nth-child(4) { width: 18%; }
-        #vtc-attendance-dashboard-overlay th:nth-child(5),
-        #vtc-attendance-dashboard-overlay td:nth-child(5) { width: 12%; }
-        #vtc-attendance-dashboard-overlay th:nth-child(6),
-        #vtc-attendance-dashboard-overlay td:nth-child(6) { width: 14%; }
-        #vtc-attendance-dashboard-overlay th {
-          background: rgba(252,211,77,0.06);
-          color: #fcd34d;
-          font-weight: 600;
-          font-size: 0.85rem;
-          text-transform: lowercase;
           letter-spacing: 0.05em;
         }
         #vtc-attendance-dashboard-overlay td {
@@ -954,15 +1003,17 @@
           font-family: inherit;
           cursor: pointer;
         }
+        /* header/info tooltip (i) */
         #vtc-attendance-dashboard-overlay .vtc-th-tip {
           position: relative;
           cursor: help;
           white-space: nowrap;
+          display: inline-block;
         }
         #vtc-attendance-dashboard-overlay .vtc-th-tip::after {
           content: attr(data-tip);
           position: absolute;
-          top: calc(100% + 4px);
+          top: calc(100% + 8px);
           left: 0;
           transform: none;
           padding: 8px 12px;
@@ -976,32 +1027,31 @@
           letter-spacing: normal;
           white-space: normal;
           min-width: 160px;
-          max-width: 240px;
+          max-width: 320px;
           text-align: left;
           line-height: 1.4;
           opacity: 0;
           pointer-events: none;
-          transition: opacity 0.15s;
+          transition: opacity 0.12s ease;
           z-index: 2147483647;
-        }
-        #vtc-attendance-dashboard-overlay th {
-          position: relative;
-          overflow: visible;
-        }
-        #vtc-attendance-dashboard-overlay table,
-        #vtc-attendance-dashboard-overlay thead,
-        #vtc-attendance-dashboard-overlay tbody,
-        #vtc-attendance-dashboard-overlay tr {
-          overflow: visible;
         }
         #vtc-attendance-dashboard-overlay .vtc-th-tip:hover::after,
         #vtc-attendance-dashboard-overlay .vtc-th-tip.show-tip::after {
           opacity: 1;
         }
+        #vtc-attendance-dashboard-overlay th,
+        #vtc-attendance-dashboard-overlay td {
+          padding: 14px 16px;
+          border-bottom: 1px solid rgba(252,211,77,0.08);
+          text-align: left;
+          vertical-align: middle; /* align header and cells vertically */
+          font-size: 1rem;
+          overflow: visible;
+        }
         #vtc-attendance-dashboard-overlay .vtc-th-short {
           display: none;
         }
-        @media (max-width: 640px) {
+        @media (max-width: 768px) {
           #vtc-attendance-dashboard-overlay .vtc-dashboard {
             padding: 14px 10px;
           }
@@ -1081,6 +1131,11 @@
             padding: 5px 10px;
             white-space: nowrap;
           }
+          #vtc-attendance-dashboard-overlay .vtc-edit {
+            font-size: 0.7rem;
+            padding: 5px 10px;
+            white-space: nowrap;
+          }
           #vtc-attendance-dashboard-overlay .vtc-bar-wrap,
           #vtc-attendance-dashboard-overlay .vtc-bar {
             height: 5px;
@@ -1109,6 +1164,7 @@
             display: table;
             table-layout: fixed;
             width: 100%;
+            /* allow table to expand on desktop; desktop-specific min-width handled below */
             min-width: 520px;
             white-space: normal;
             border-radius: 8px;
@@ -1118,6 +1174,30 @@
             -webkit-overflow-scrolling: touch;
             margin: 0 -10px;
             padding: 0 10px;
+          }
+
+          /* Desktop-mode tweaks: stretch table and give cells more padding */
+          #vtc-attendance-dashboard-overlay.vtc-mode-desktop .vtc-table-scroll {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            display: block;
+            overflow-x: auto;
+          }
+          /* force the table to fill the dashboard column; use a targeted
+             selector that should win over most host rules */
+          #vtc-attendance-dashboard-overlay.vtc-mode-desktop .vtc-table-scroll > table,
+          #vtc-attendance-dashboard-overlay.vtc-mode-desktop table {
+            width: 100% !important;
+            table-layout: fixed !important;
+            min-width: 900px;
+          }
+          #vtc-attendance-dashboard-overlay.vtc-mode-desktop th,
+          #vtc-attendance-dashboard-overlay.vtc-mode-desktop td {
+            padding: 12px 16px;
+            font-size: 0.95rem;
+            vertical-align: middle;
+            white-space: normal;
           }
           #vtc-attendance-dashboard-overlay .vtc-table-scroll::-webkit-scrollbar {
             height: 4px;
@@ -1131,19 +1211,20 @@
             border-radius: 4px;
           }
           #vtc-attendance-dashboard-overlay th:nth-child(1),
-          #vtc-attendance-dashboard-overlay td:nth-child(1) { width: 28%; }
+          #vtc-attendance-dashboard-overlay td:nth-child(1) { width: 40%; }
+          /* widen module column so module name/text can span into the current column area */
+          #vtc-attendance-dashboard-overlay th:nth-child(1),
+          #vtc-attendance-dashboard-overlay td:nth-child(1) { width: 40%; }
           #vtc-attendance-dashboard-overlay th:nth-child(2),
-          #vtc-attendance-dashboard-overlay td:nth-child(2) { width: 12%; }
+          #vtc-attendance-dashboard-overlay td:nth-child(2) { width: 10%; }
           #vtc-attendance-dashboard-overlay th:nth-child(3),
           #vtc-attendance-dashboard-overlay td:nth-child(3) { width: 12%; }
           #vtc-attendance-dashboard-overlay th:nth-child(4),
-          #vtc-attendance-dashboard-overlay td:nth-child(4) { width: 20%; }
+          #vtc-attendance-dashboard-overlay td:nth-child(4) { width: 14%; }
           #vtc-attendance-dashboard-overlay th:nth-child(5),
-          #vtc-attendance-dashboard-overlay td:nth-child(5) { width: 12%; }
+          #vtc-attendance-dashboard-overlay td:nth-child(5) { width: 8%; }
           #vtc-attendance-dashboard-overlay th:nth-child(6),
           #vtc-attendance-dashboard-overlay td:nth-child(6) { width: 16%; }
-          #vtc-attendance-dashboard-overlay .vtc-badge {
-            font-size: 0.6rem;
             padding: 2px 6px;
             white-space: nowrap;
           }
@@ -1183,6 +1264,45 @@
             inset: 20px;
           }
         }
+        /* Explicit desktop rules to ensure desktop layout applies for widths >= 769px */
+        @media (min-width: 769px) {
+          #vtc-attendance-dashboard-overlay .vtc-dashboard {
+            padding: 40px 48px;
+          }
+          #vtc-attendance-dashboard-overlay .vtc-header {
+            flex-wrap: nowrap;
+            gap: 16px;
+          }
+          #vtc-attendance-dashboard-overlay .vtc-actions-right {
+            margin-left: 8px;
+            gap: 8px;
+          }
+          #vtc-attendance-dashboard-overlay .vtc-edit,
+          #vtc-attendance-dashboard-overlay .vtc-close {
+            padding: 10px 20px;
+            font-size: 1rem;
+          }
+          #vtc-attendance-dashboard-overlay .vtc-bar-wrap,
+          #vtc-attendance-dashboard-overlay .vtc-bar {
+            height: 10px !important;
+          }
+          #vtc-attendance-dashboard-overlay table {
+            table-layout: fixed;
+            width: 100%;
+          }
+        }
+        /* Also force desktop-specific label visibility when overlay is in desktop mode
+           (this avoids relying solely on media queries which can be affected by host page viewports) */
+        #vtc-attendance-dashboard-overlay.vtc-mode-desktop .vtc-th-long {
+          display: inline !important;
+        }
+        #vtc-attendance-dashboard-overlay.vtc-mode-desktop .vtc-th-short {
+          display: none !important;
+        }
+        #vtc-attendance-dashboard-overlay.vtc-mode-desktop table {
+          width: 100% !important;
+          min-width: 900px !important;
+        }
       </style>
 
       <div class="vtc-dashboard">
@@ -1201,11 +1321,17 @@
               <select id="vtc-semester-select" class="vtc-semester-select">
                 ${semesterNames.map(name => `<option value="${esc(name)}" ${name === activeSemester ? 'selected' : ''}>${esc(name)}</option>`).join('')}
               </select>
-              <button class="vtc-close" type="button">close</button>
+              <div class="vtc-actions-right">
+                <button id="vtc-edit-mode-btn" class="vtc-edit" type="button" style="background:rgba(251,191,36,0.15);color:#fbbf24;">edit mode</button>
+                <button id="vtc-dashboard-close" class="vtc-close" type="button">close</button>
+              </div>
             </div>
           </div>
         </div>
 
+        <div style="margin-top:8px;margin-bottom:8px;">
+          <div class="vtc-note" style="color:#fbbf24;font-size:0.95rem;font-weight:600;"><strong>note:</strong> you can edit the module total hr if you got a actual attendance table so you can check how many hr you can skip :-)</div>
+        </div>
         <div id="vtc-pie">
           ${buildPieChart(initialSummaries, initialRating)}
         </div>
@@ -1262,6 +1388,50 @@
 
     document.body.appendChild(overlay);
 
+    // Ensure bar heights match viewport (fix: desktop showing mobile-sized bars)
+    const adjustBarHeights = () => {
+      try {
+        const wrapEls = overlay.querySelectorAll('.vtc-bar-wrap');
+        const barEls = overlay.querySelectorAll('.vtc-bar');
+        // Use overlay width (or document width) instead of window.innerWidth alone;
+        // this helps when the page is zoomed or there's a narrow content column.
+        const overlayWidth = (overlay && overlay.getBoundingClientRect && overlay.getBoundingClientRect().width) || document.documentElement.clientWidth || window.innerWidth;
+        const effectiveWidth = Math.max(window.innerWidth || 0, overlayWidth || 0, document.documentElement.clientWidth || 0);
+        // match the CSS breakpoint: treat <= 768px as mobile
+        // Use window.innerWidth as the primary signal — some host pages constrain inner overlay width
+        // so require both overlay/effective width and window width to be small before treating as mobile.
+        const isMobile = (effectiveWidth <= 768) && (window.innerWidth <= 768);
+        // attach explicit mode classes to avoid accidental toggles from other code
+        try {
+          overlay.classList.remove('vtc-mode-mobile', 'vtc-mode-desktop');
+          overlay.classList.add(isMobile ? 'vtc-mode-mobile' : 'vtc-mode-desktop');
+          overlay.setAttribute('data-vtc-mode', isMobile ? 'mobile' : 'desktop');
+          // defensive: if the visible window is wide, force desktop mode
+          if (window.innerWidth >= 900) {
+            overlay.classList.remove('vtc-mode-mobile');
+            overlay.classList.add('vtc-mode-desktop');
+            overlay.setAttribute('data-vtc-mode', 'desktop');
+          }
+        } catch (e) {}
+        const wrapH = isMobile ? '5px' : '10px';
+        const barH = wrapH;
+        wrapEls.forEach(el => {
+          el.style.height = wrapH;
+          el.style.minHeight = wrapH;
+        });
+        barEls.forEach(el => {
+          el.style.height = barH;
+          el.style.top = '0';
+        });
+      } catch (e) {
+        console.debug && console.debug('[VTC] adjustBarHeights failed', e);
+      }
+    };
+    adjustBarHeights();
+    window.addEventListener('resize', adjustBarHeights);
+
+    // debug badge removed in production build (was used for diagnostics)
+
     const fileMap = {
       'summary-json': () => ({ name: 'vtc-integrated-attendance-summary.json', mime: 'application/json;charset=utf-8', content: JSON.stringify(semesterSummaries[currentSemester], null, 2) }),
       'details-json': () => ({ name: 'vtc-integrated-attendance-details.json', mime: 'application/json;charset=utf-8', content: JSON.stringify(details, null, 2) }),
@@ -1269,7 +1439,7 @@
       'details-csv': () => ({ name: 'vtc-integrated-attendance-details.csv', mime: 'text/csv;charset=utf-8', content: toCsv(details) })
     };
 
-    overlay.querySelector(".vtc-close").addEventListener("click", () => {
+    overlay.querySelector("#vtc-dashboard-close").addEventListener("click", () => {
       overlay.remove();
       // floating reopen button
       let eggBtn = document.getElementById('vtc-egg-reopen');
@@ -1436,8 +1606,48 @@
       }
     });
 
+    overlay.querySelector("#vtc-edit-mode-btn").addEventListener("click", () => {
+      editMode = !editMode;
+      const btn = overlay.querySelector("#vtc-edit-mode-btn");
+      btn.textContent = editMode ? "done editing" : "edit mode";
+      btn.style.background = editMode ? "rgba(52,211,153,0.15)" : "rgba(251,191,36,0.15)";
+      btn.style.color = editMode ? "#34d399" : "#fbbf24";
+      const sums = semesterSummaries[currentSemester] || [];
+      overlay.querySelector("#vtc-table-body").innerHTML = buildRows(sums);
+    });
+
+    overlay.querySelector("#vtc-table-body").addEventListener("change", (e) => {
+      if (!e.target.classList.contains("vtc-hours-input")) return;
+      const code = e.target.dataset.module;
+      const field = e.target.dataset.field || 'calendar';
+      const val = parseFloat(e.target.value);
+      if (Number.isNaN(val) || val < 0) return;
+
+      const key = `${currentSemester}::${code}`;
+      if (field === 'total') {
+        manualOverrides[key] = { totalCalendarScheduledHours: val };
+        // keep Overall in sync so the overall display reflects the edited total
+        const overallKey = `Overall::${code}`;
+        manualOverrides[overallKey] = { totalCalendarScheduledHours: val };
+        console.debug && console.debug('[VTC] manual override (total)', key, val, 'also set', overallKey);
+      } else {
+        manualOverrides[key] = { calendarScheduledHours: val };
+        console.debug && console.debug('[VTC] manual override (per-sem)', key, val);
+      }
+
+      semesterSummaries[currentSemester] = applyOverrides(semesterSummaries[currentSemester], currentSemester);
+      if (semesterSummaries["Overall"]) {
+        semesterSummaries["Overall"] = applyOverrides(semesterSummaries["Overall"], "Overall");
+      }
+
+      const sums = semesterSummaries[currentSemester] || [];
+      overlay.querySelector("#vtc-table-body").innerHTML = buildRows(sums);
+      overlay.querySelector("#vtc-pie").innerHTML = buildPieChart(sums, buildRating(sums));
+    });
+
     overlay.querySelector("#vtc-semester-select").addEventListener("change", (e) => {
       currentSemester = e.target.value;
+      semesterSummaries[currentSemester] = applyOverrides(semesterSummaries[currentSemester], currentSemester);
       const sums = semesterSummaries[currentSemester] || [];
       overlay.querySelector("#vtc-table-body").innerHTML = buildRows(sums);
       overlay.querySelector("#vtc-pie").innerHTML = buildPieChart(sums, buildRating(sums));
