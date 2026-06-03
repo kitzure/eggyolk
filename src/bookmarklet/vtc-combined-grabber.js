@@ -11,7 +11,11 @@
 (function () {
   const RANGE_START = new Date(2025, 8, 1);  // 2025-09-01
   const RANGE_END   = new Date(2026, 8, 1);  // 2026-09-01
-  const THRESHOLD = 70;
+  let currentThreshold = 70;
+  try {
+    const savedThreshold = localStorage.getItem('vtc_threshold');
+    if (savedThreshold === '80') currentThreshold = 80;
+  } catch (e) {}
 
   const sleep = ms => new Promise(r => setTimeout(r, ms));
   const clean = s => String(s || "").replace(/\s+/g, " ").trim();
@@ -28,7 +32,7 @@
       crossSem: 'cross sem',
       crossSemTooltip: 'Module runs across semesters',
       title: 'VTC Attendance Checker',
-      legend: 'blue = current rate, green = best possible rate, red line = 70%',
+      legend: 'blue = current rate, green = best possible rate, red line = {threshold}%',
       noteEdit: 'note: you can edit the module total hr if you got a actual attendance table so you can check how many hr you can skip :-) ',
       download: 'download',
       exportIcs: 'export ICS',
@@ -69,13 +73,14 @@
       off: 'off',
       other: 'other',
       hideFilter: 'hide filter',
+      semesterFmt: 'Sem {n}',
       exporting: 'exporting...',
       moduleTip: 'module code and name',
       currentTip: 'your current attendance rate based on recorded hours',
       bestTip: 'max possible rate if you attend every future lesson',
       hoursTip: 'attended hours / total scheduled hours from calendar',
       futureTip: 'hours for lessons that have not happened yet',
-      statusTip: 'passed = above 70%, almost pass = below 70% but can reach, failed = cooked, no record = not started/no attendance data',
+      statusTip: 'passed = above {threshold}%, almost pass = below {threshold}% but can reach, failed = cooked, no record = not started/no attendance data',
       bestBarTipFmt: 'best possible rate: {value}',
       currentBarTipFmt: 'current rate: {value}',
       na: 'N/A',
@@ -115,7 +120,7 @@
       crossSem: '跨Sem',
       crossSemTooltip: '跨Sem',
       title: 'VTC 出席率Checker',
-      legend: '藍色 = 目前出席率，綠色 = 最佳可能出席率，紅線 = 70%',
+      legend: '藍色 = 目前出席率，綠色 = 最佳可能出席率，紅線 = {threshold}%',
       noteEdit: '話比你知：如果見到個單元時間比你手上有嘅出席率list嘅時間有啲唔同嘅話，可以開編輯模式改時間就可以睇到大約可走堂時間 :-) ',
       download: '下載',
       exportIcs: '匯出 ICS',
@@ -156,13 +161,14 @@
       off: '取消',
       other: '其他',
       hideFilter: '隱藏篩選',
+      semesterFmt: '第{n}學期',
       exporting: '匯出中...',
       moduleTip: '單元代碼與名稱',
       currentTip: '根據已記錄時數計算的目前出席率',
       bestTip: '如果所有課堂都上嘅出席率',
       hoursTip: '出席時數 / 行事曆排定總時數',
       futureTip: '尚未開始課堂的時數',
-      statusTip: 'Pass只要過70%就得，差唔多Pass就上多啲堂，紅色你知咩料啦。 灰色=未開始/無記錄 ',
+      statusTip: 'Pass只要過{threshold}%就得，差唔多Pass就上多啲堂，紅色你知咩料啦。 灰色=未開始/無記錄 ',
       bestBarTipFmt: '最高可能出席率：{value}',
       currentBarTipFmt: '目前出席率：{value}',
       na: '無',
@@ -659,13 +665,13 @@
         const currentHourRate = recordMinutes ? +((attendedMinutes / recordMinutes) * 100).toFixed(2) : s.currentHourRate;
         const bestPossibleFullTermRate = calendarMinutes ? +(((attendedMinutes + futureMinutes) / calendarMinutes) * 100).toFixed(2) : null;
 
-        const neededHours = Math.max(0, (THRESHOLD / 100) * newCalHours - attHours);
+        const neededHours = Math.max(0, (currentThreshold / 100) * newCalHours - attHours);
         const skipHours = futureHours > 0 ? Math.max(0, +(futureHours - neededHours).toFixed(2)) : 0;
 
         const effectiveAbsentRate = newCalHours > 0 ? +((deductedHours / newCalHours) * 100).toFixed(1) : 0;
 
-        const status70 = currentHourRate == null ? "NO_RECORD" : currentHourRate < THRESHOLD ? "BELOW_70_NOW" : "OK_NOW";
-        const bestStatus70 = bestPossibleFullTermRate == null ? "NO_CALENDAR_MATCH" : bestPossibleFullTermRate < THRESHOLD ? "CANNOT_REACH_70_EVEN_IF_FUTURE_PRESENT" : "CAN_REACH_OR_KEEP_70_IF_FUTURE_PRESENT";
+        const status70 = currentHourRate == null ? "NO_RECORD" : currentHourRate < currentThreshold ? "BELOW_70_NOW" : "OK_NOW";
+        const bestStatus70 = bestPossibleFullTermRate == null ? "NO_CALENDAR_MATCH" : bestPossibleFullTermRate < currentThreshold ? "CANNOT_REACH_70_EVEN_IF_FUTURE_PRESENT" : "CAN_REACH_OR_KEEP_70_IF_FUTURE_PRESENT";
 
         return {
           ...s,
@@ -751,6 +757,12 @@
       }
     } catch (e) {}
     const t = (key) => (translations[currentLang] && translations[currentLang][key]) || (translations.en && translations.en[key]) || key;
+    const tSemName = (name) => {
+      if (name === 'Overall') return t('overall');
+      const m = name.match(/^Sem\s+(\d+)$/i);
+      if (m) return (t('semesterFmt') || 'Sem {n}').replace('{n}', m[1]);
+      return name;
+    };
 
     // If external translations were not present at parse time, try to load them
     // asynchronously so edits to translations.js can take effect. We do this
@@ -900,7 +912,7 @@
         const totalHours = s.totalCalendarScheduledHours ?? s.calendarScheduledHours;
         const editIndicator = s._manualOverride ? `<span title="manually adjusted" style="color:#fbbf24;margin-left:4px;">&#9998;</span>` : "";
         const baseHoursDisplay = (isCrossSem && !isOverallView && totalHours !== s.calendarScheduledHours)
-          ? `${esc(s.attendedHours)} / ${esc(s.calendarScheduledHours)} h${editIndicator} <span style="color:#a8a29e;font-size:0.7rem;">(total: ${esc(totalHours)} h)</span>`
+          ? `${esc(s.attendedHours)} / ${esc(s.calendarScheduledHours)} h${editIndicator} <span class="vtc-total-hours" style="color:#a8a29e;font-size:0.7rem;">(total: ${esc(totalHours)} h)</span>`
           : `${esc(s.attendedHours)} / ${esc(s.calendarScheduledHours)} h${editIndicator}`;
         // In edit mode we allow editing the TOTAL hours only. Keep the per-sem display and show an input for total.
         const hoursDisplay = editMode
@@ -1012,7 +1024,8 @@
       `;
     };
 
-    const initialSummaries = semesterSummaries[activeSemester];
+    const initialSummaries = semesterSummaries[activeSemester] ? applyOverrides(semesterSummaries[activeSemester], activeSemester) : [];
+    semesterSummaries[activeSemester] = initialSummaries;
     const initialRating = buildRating(initialSummaries);
 
     // Extract unique module codes from calendar events for ICS filter
@@ -1028,6 +1041,7 @@
 
     const overlay = document.createElement("div");
     overlay.id = "vtc-attendance-dashboard-overlay";
+    overlay.style.setProperty('--vtc-threshold', currentThreshold + '%');
     overlay.innerHTML = `
       <style>
         #vtc-attendance-dashboard-overlay {
@@ -1321,7 +1335,8 @@
           box-shadow: 0 6px 18px rgba(14,30,37,0.06);
         }
         #vtc-attendance-dashboard-overlay.vtc-theme-portal .vtc-semester-select,
-        #vtc-attendance-dashboard-overlay.vtc-theme-portal .vtc-lang-select {
+        #vtc-attendance-dashboard-overlay.vtc-theme-portal .vtc-lang-select,
+        #vtc-attendance-dashboard-overlay.vtc-theme-portal .vtc-threshold-select {
           background: #ffffff;
           border: 1px solid rgba(11,61,145,0.06);
           color: #0b3d91;
@@ -1474,7 +1489,7 @@
         }
         #vtc-attendance-dashboard-overlay .vtc-threshold {
           position: absolute;
-          left: 70%;
+          left: var(--vtc-threshold, 70%);
           top: 0;
           height: 10px;
           width: 2px;
@@ -1619,6 +1634,16 @@
           font-family: inherit;
           cursor: pointer;
           margin-right: 8px;
+        }
+        #vtc-attendance-dashboard-overlay .vtc-threshold-select {
+          padding: 6px 8px;
+          border-radius: 6px;
+          background: #141414;
+          border: 1px solid rgba(252,211,77,0.25);
+          color: #fcd34d;
+          font-size: 0.85rem;
+          font-family: inherit;
+          cursor: pointer;
         }
         /* header/info tooltip (i) */
         #vtc-attendance-dashboard-overlay .vtc-th-tip {
@@ -1938,6 +1963,15 @@
           #vtc-attendance-dashboard-overlay td:first-child strong {
             font-size: 1.1rem;
           }
+          #vtc-attendance-dashboard-overlay .vtc-total-hours {
+            display: block;
+            margin-top: 2px;
+          }
+          #vtc-attendance-dashboard-overlay .vtc-edit-label {
+            display: block;
+            margin-left: 0;
+            margin-top: 4px;
+          }
           #vtc-attendance-dashboard-overlay .vtc-pie {
             width: 110px;
             height: 110px;
@@ -2017,15 +2051,19 @@
           <div class="vtc-header">
             <div>
               <h1>${esc(t('title'))}</h1>
-              <div class="vtc-muted vtc-legend">${esc(t('legend'))}</div>
+              <div class="vtc-muted vtc-legend">${esc(t('legend').replace('{threshold}', currentThreshold))}</div>
             </div>
             <div class="vtc-header-actions">
               <div class="vtc-header-row">
                 <select id="vtc-semester-select" class="vtc-semester-select">
-                  ${semesterNames.map(name => `<option value="${esc(name)}" ${name === activeSemester ? 'selected' : ''}>${name === 'Overall' ? esc(t('overall')) : esc(name)}</option>`).join('')}
+                  ${semesterNames.map(name => `<option value="${esc(name)}" ${name === activeSemester ? 'selected' : ''}>${esc(tSemName(name))}</option>`).join('')}
                 </select>
                 <select id="vtc-lang-select" class="vtc-lang-select">
                   ${Object.keys(translations).map(code => `<option value="${code}" ${code === currentLang ? 'selected' : ''}>${translations[code].languageName || code}</option>`).join('')}
+                </select>
+                <select id="vtc-threshold-select" class="vtc-threshold-select">
+                  <option value="70" ${currentThreshold === 70 ? 'selected' : ''}>70%</option>
+                  <option value="80" ${currentThreshold === 80 ? 'selected' : ''}>80%</option>
                 </select>
               </div>
               <div class="vtc-header-row">
@@ -2084,7 +2122,7 @@
                   <th><span class="vtc-th-tip" data-i18n-key="bestHeader" data-i18n-tip="bestTip" data-tip="${esc(t('bestTip'))}"><span class="vtc-th-long">${esc(t('bestHeader'))}</span><span class="vtc-th-short">${esc(t('bestShort') || 'best')}</span> &#9432;</span></th>
                   <th><span class="vtc-th-tip" data-i18n-key="hoursHeader" data-i18n-tip="hoursTip" data-tip="${esc(t('hoursTip'))}">${esc(t('hoursHeader'))} &#9432;</span></th>
                   <th><span class="vtc-th-tip" data-i18n-key="futureHeader" data-i18n-tip="futureTip" data-tip="${esc(t('futureTip'))}"><span class="vtc-th-long">${esc(t('futureHeader'))}</span><span class="vtc-th-short">${esc(t('futShort') || 'fut')}</span> &#9432;</span></th>
-                  <th><span class="vtc-th-tip" data-i18n-key="statusHeader" data-i18n-tip="statusTip" data-tip="${esc(t('statusTip'))}">${esc(t('statusHeader'))} &#9432;</span></th>
+                  <th><span class="vtc-th-tip" data-i18n-key="statusHeader" data-i18n-tip="statusTip" data-tip="${esc(t('statusTip').replace('{threshold}', currentThreshold))}">${esc(t('statusHeader'))} &#9432;</span></th>
                 </tr>
             </thead>
             <tbody id="vtc-table-body">${buildRows(initialSummaries)}</tbody>
@@ -2226,7 +2264,9 @@
     const icsFilterList = overlay.querySelector("#vtc-ics-filter-list");
     const icsFilterToggle = overlay.querySelector("#vtc-ics-filter-toggle");
 
-    if (icsFilterList && icsModules.length > 0) {
+    const renderIcsFilterList = () => {
+      if (!icsFilterList || icsModules.length === 0) return;
+
       // Map module codes to semesters
       const moduleSemesterMap = {};
       for (const semName of semesterNames) {
@@ -2260,18 +2300,18 @@
         if (semName === 'Overall') continue;
         const codes = semGroups[semName];
         if (!codes || codes.length === 0) continue;
-        const gid = `vtc-ics-group-${groupIndex}`;
-          html += `<div style="margin-bottom:10px;" data-ics-group="${esc(semName)}">
+        html += `<div style="margin-bottom:10px;" data-ics-group="${esc(semName)}">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-            <p style="margin:0;font-size:0.7rem;color:#a8a29e;font-weight:600;">${esc(semName)}</p>
+            <p style="margin:0;font-size:0.7rem;color:#a8a29e;font-weight:600;">${esc(tSemName(semName))}</p>
             <div style="display:flex;gap:6px;">
               <a href="#" class="vtc-ics-all" data-group="${esc(semName)}" style="font-size:0.8rem;color:#fbbf24;text-decoration:none;padding:2px 4px;">${esc(t('all'))}</a>
               <a href="#" class="vtc-ics-off" data-group="${esc(semName)}" style="font-size:0.8rem;color:#a8a29e;text-decoration:none;padding:2px 4px;">${esc(t('off'))}</a>
             </div>
           </div>`;
         for (const code of codes) {
+          const isChecked = icsSelected.has(code) ? 'checked' : '';
           html += `<label style="display:flex;align-items:center;gap:6px;padding:2px 0;cursor:pointer;font-size:0.8rem;color:#d6d3d1;">
-            <input type="checkbox" value="${esc(code)}" checked style="accent-color:#fbbf24;cursor:pointer;width:16px;height:16px;min-width:16px;">
+            <input type="checkbox" value="${esc(code)}" ${isChecked} style="accent-color:#fbbf24;cursor:pointer;width:16px;height:16px;min-width:16px;">
             <span>${esc(code)}</span>
           </label>`;
         }
@@ -2288,8 +2328,9 @@
             </div>
           </div>`;
         for (const code of unassigned) {
+          const isChecked = icsSelected.has(code) ? 'checked' : '';
           html += `<label style="display:flex;align-items:center;gap:6px;padding:2px 0;cursor:pointer;font-size:0.8rem;color:#d6d3d1;">
-            <input type="checkbox" value="${esc(code)}" checked style="accent-color:#fbbf24;cursor:pointer;width:16px;height:16px;min-width:16px;">
+            <input type="checkbox" value="${esc(code)}" ${isChecked} style="accent-color:#fbbf24;cursor:pointer;width:16px;height:16px;min-width:16px;">
             <span>${esc(code)}</span>
           </label>`;
         }
@@ -2297,13 +2338,11 @@
       }
       icsFilterList.innerHTML = html;
 
-      const updateCheckboxState = (cb) => {
-        if (cb.checked) icsSelected.add(cb.value);
-        else icsSelected.delete(cb.value);
-      };
-
       icsFilterList.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-        cb.addEventListener('change', () => updateCheckboxState(cb));
+        cb.addEventListener('change', () => {
+          if (cb.checked) icsSelected.add(cb.value);
+          else icsSelected.delete(cb.value);
+        });
       });
 
       // all / off toggles per group
@@ -2315,7 +2354,8 @@
           if (!container) return;
           container.querySelectorAll('input[type="checkbox"]').forEach(cb => {
             cb.checked = true;
-            updateCheckboxState(cb);
+            if (cb.checked) icsSelected.add(cb.value);
+            else icsSelected.delete(cb.value);
           });
         });
       });
@@ -2327,11 +2367,14 @@
           if (!container) return;
           container.querySelectorAll('input[type="checkbox"]').forEach(cb => {
             cb.checked = false;
-            updateCheckboxState(cb);
+            if (cb.checked) icsSelected.add(cb.value);
+            else icsSelected.delete(cb.value);
           });
         });
       });
-    }
+    };
+
+    renderIcsFilterList();
 
     if (icsFilterToggle && icsFilterPanel) {
       icsFilterToggle.addEventListener('click', () => {
@@ -2413,6 +2456,26 @@
       overlay.querySelector("#vtc-pie").innerHTML = buildPieChart(sums, buildRating(sums));
     });
 
+    overlay.querySelector("#vtc-threshold-select").addEventListener("change", (e) => {
+      currentThreshold = parseInt(e.target.value, 10);
+      try { localStorage.setItem('vtc_threshold', String(currentThreshold)); } catch (e) {}
+      overlay.style.setProperty('--vtc-threshold', currentThreshold + '%');
+      semesterSummaries[currentSemester] = applyOverrides(semesterSummaries[currentSemester], currentSemester);
+      if (semesterSummaries["Overall"]) {
+        semesterSummaries["Overall"] = applyOverrides(semesterSummaries["Overall"], "Overall");
+      }
+      const sums = semesterSummaries[currentSemester] || [];
+      overlay.querySelector("#vtc-table-body").innerHTML = buildRows(sums);
+      overlay.querySelector("#vtc-pie").innerHTML = buildPieChart(sums, buildRating(sums));
+      // Update legend and status tooltip
+      const legendEl = overlay.querySelector('.vtc-legend');
+      if (legendEl) legendEl.textContent = t('legend').replace('{threshold}', currentThreshold);
+      overlay.querySelectorAll('thead .vtc-th-tip').forEach(el => {
+        const tipKey = el.getAttribute('data-i18n-tip');
+        if (tipKey) el.setAttribute('data-tip', esc(t(tipKey).replace('{threshold}', currentThreshold)));
+      });
+    });
+
     // language selector: update tooltip and accessible label for cross-sem badges
     const updateCrossSemTexts = () => {
       // cross-sem badges
@@ -2440,11 +2503,15 @@
       }
       const filterBtn = overlay.querySelector('#vtc-ics-filter-toggle');
       if (filterBtn) filterBtn.textContent = t('filterModules');
-      // semester select: replace display for Overall
+      // ICS filter panel title and list
+      const filterTitle = icsFilterPanel && icsFilterPanel.querySelector('p');
+      if (filterTitle) filterTitle.textContent = t('selectModulesToExport');
+      renderIcsFilterList();
+      // semester select: translate all semester names
       const semSel = overlay.querySelector('#vtc-semester-select');
       if (semSel) {
         Array.from(semSel.options).forEach(opt => {
-          if (opt.value === 'Overall') opt.text = t('overall');
+          opt.text = tSemName(opt.value);
         });
       }
 
@@ -2456,7 +2523,7 @@
 
       // legend text under title
       const legendEl = overlay.querySelector('.vtc-legend');
-      if (legendEl) legendEl.textContent = t('legend');
+      if (legendEl) legendEl.textContent = t('legend').replace('{threshold}', currentThreshold);
 
       // update cross-sem tooltip attributes (data-tip) as well as title/aria
       overlay.querySelectorAll('.vtc-cross-sem').forEach(el => {
@@ -2475,7 +2542,7 @@
       overlay.querySelectorAll('thead .vtc-th-tip').forEach(el => {
         const key = el.getAttribute('data-i18n-key');
         const tipKey = el.getAttribute('data-i18n-tip');
-        if (tipKey) el.setAttribute('data-tip', esc(t(tipKey)));
+        if (tipKey) el.setAttribute('data-tip', esc(t(tipKey).replace('{threshold}', currentThreshold)));
         if (!key) return;
         // update long/short variants if present
         const longEl = el.querySelector('.vtc-th-long');
@@ -3114,20 +3181,20 @@
 
       const status70 = currentHourRate == null
         ? "NO_RECORD"
-        : currentHourRate < THRESHOLD
+        : currentHourRate < currentThreshold
           ? "BELOW_70_NOW"
           : "OK_NOW";
 
       const bestStatus70 = bestPossibleFullTermRate == null
         ? "NO_CALENDAR_MATCH"
-        : bestPossibleFullTermRate < THRESHOLD
+        : bestPossibleFullTermRate < currentThreshold
           ? "CANNOT_REACH_70_EVEN_IF_FUTURE_PRESENT"
           : "CAN_REACH_OR_KEEP_70_IF_FUTURE_PRESENT";
 
       const calHours = +(calendarMinutes / 60).toFixed(2);
       const attHours = +(attendedMinutes / 60).toFixed(2);
       const futHours = +(futureMinutes / 60).toFixed(2);
-      const neededHours = Math.max(0, (THRESHOLD / 100) * calHours - attHours);
+      const neededHours = Math.max(0, (currentThreshold / 100) * calHours - attHours);
       const skipHours = futHours > 0 ? Math.max(0, +(futHours - neededHours).toFixed(2)) : 0;
       const modEvents = calendarEvents.filter(e => moduleCodeFromText(getEventText(e)) === module.value);
       const totalLessons = modEvents.length > 0 ? modEvents.length : rows.length;
@@ -3218,7 +3285,7 @@
       const calHours = +(calMins / 60).toFixed(2);
       const attHours = +(attMins / 60).toFixed(2);
       const futHours = +(futMins / 60).toFixed(2);
-      const neededHours = Math.max(0, (THRESHOLD / 100) * calHours - attHours);
+      const neededHours = Math.max(0, (currentThreshold / 100) * calHours - attHours);
       const skipHours = futHours > 0 ? Math.max(0, +(futHours - neededHours).toFixed(2)) : 0;
       const totalLessons = modCalEvents.length > 0 ? modCalEvents.length : modDetails.length;
       const absentRate = totalLessons > 0 ? +((abs / totalLessons) * 100).toFixed(1) : 0;
@@ -3257,8 +3324,8 @@
         bestPossibleFullTermRate: bestRate,
         skipAllowanceHours: skipHours,
         avgLessonHours,
-        status70: curRate == null ? "NO_RECORD" : curRate < THRESHOLD ? "BELOW_70_NOW" : "OK_NOW",
-        bestStatus70: bestRate == null ? "NO_CALENDAR_MATCH" : bestRate < THRESHOLD ? "CANNOT_REACH_70_EVEN_IF_FUTURE_PRESENT" : "CAN_REACH_OR_KEEP_70_IF_FUTURE_PRESENT"
+        status70: curRate == null ? "NO_RECORD" : curRate < currentThreshold ? "BELOW_70_NOW" : "OK_NOW",
+        bestStatus70: bestRate == null ? "NO_CALENDAR_MATCH" : bestRate < currentThreshold ? "CANNOT_REACH_70_EVEN_IF_FUTURE_PRESENT" : "CAN_REACH_OR_KEEP_70_IF_FUTURE_PRESENT"
       };
     };
 
