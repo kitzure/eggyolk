@@ -744,6 +744,12 @@
     })();
 
     let currentLang = (typeof localStorage !== 'undefined' && localStorage.getItem('vtc_lang')) || 'en';
+    // Persist English as the default on first use so the default is explicit
+    try {
+      if (typeof localStorage !== 'undefined' && !localStorage.getItem('vtc_lang')) {
+        localStorage.setItem('vtc_lang', 'en');
+      }
+    } catch (e) {}
     const t = (key) => (translations[currentLang] && translations[currentLang][key]) || (translations.en && translations.en[key]) || key;
 
     // If external translations were not present at parse time, try to load them
@@ -1091,6 +1097,13 @@
           gap: 10px;
           flex-wrap: wrap;
         }
+        #vtc-attendance-dashboard-overlay .vtc-header-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          width: 100%;
+          gap: 6px;
+        }
         /* theme toggle button */
         #vtc-attendance-dashboard-overlay .vtc-theme-btn {
           display: inline-flex;
@@ -1105,11 +1118,17 @@
           cursor: pointer;
           font-size: 1.05rem;
         }
+        #vtc-attendance-dashboard-overlay .vtc-actions-left {
+          display: flex;
+          gap: 8px;
+          align-items: center;
+          margin-left: 0;
+        }
         #vtc-attendance-dashboard-overlay .vtc-actions-right {
           display: flex;
           gap: 8px;
           align-items: center;
-          margin-left: 8px;
+          margin-left: auto;
         }
         #vtc-attendance-dashboard-overlay .vtc-downloads-section,
         #vtc-attendance-dashboard-overlay .vtc-downloads-top {
@@ -1672,7 +1691,18 @@
           }
           #vtc-attendance-dashboard-overlay .vtc-header-actions {
             width: 100%;
-            justify-content: space-between;
+            justify-content: flex-start;
+            gap: 6px;
+          }
+          #vtc-attendance-dashboard-overlay .vtc-header-row {
+            width: 100%;
+            gap: 6px;
+          }
+          #vtc-attendance-dashboard-overlay .vtc-actions-left {
+            margin-left: 0;
+          }
+          #vtc-attendance-dashboard-overlay .vtc-actions-right {
+            margin-left: 0;
             gap: 6px;
           }
           #vtc-attendance-dashboard-overlay .vtc-muted {
@@ -1925,8 +1955,16 @@
             flex-wrap: nowrap;
             gap: 16px;
           }
+          #vtc-attendance-dashboard-overlay .vtc-header-row {
+            width: auto;
+            flex-shrink: 0;
+            justify-content: flex-start;
+          }
+          #vtc-attendance-dashboard-overlay .vtc-header-row:nth-child(2) {
+            margin-left: auto;
+          }
           #vtc-attendance-dashboard-overlay .vtc-actions-right {
-            margin-left: 8px;
+            margin-left: 0;
             gap: 8px;
           }
           #vtc-attendance-dashboard-overlay .vtc-edit,
@@ -1982,16 +2020,22 @@
               <div class="vtc-muted vtc-legend">${esc(t('legend'))}</div>
             </div>
             <div class="vtc-header-actions">
-              <select id="vtc-lang-select" class="vtc-lang-select">
+              <div class="vtc-header-row">
+                <select id="vtc-semester-select" class="vtc-semester-select">
+                  ${semesterNames.map(name => `<option value="${esc(name)}" ${name === activeSemester ? 'selected' : ''}>${name === 'Overall' ? esc(t('overall')) : esc(name)}</option>`).join('')}
+                </select>
+                <select id="vtc-lang-select" class="vtc-lang-select">
                   ${Object.keys(translations).map(code => `<option value="${code}" ${code === currentLang ? 'selected' : ''}>${translations[code].languageName || code}</option>`).join('')}
                 </select>
-              <select id="vtc-semester-select" class="vtc-semester-select">
-                ${semesterNames.map(name => `<option value="${esc(name)}" ${name === activeSemester ? 'selected' : ''}>${name === 'Overall' ? esc(t('overall')) : esc(name)}</option>`).join('')}
-              </select>
-              <div class="vtc-actions-right">
-                <button id="vtc-theme-toggle" class="vtc-theme-btn" type="button" title="Toggle theme">🎨</button>
-                <button id="vtc-edit-mode-btn" class="vtc-edit" type="button">${esc(t('editMode'))}</button>
-                <button id="vtc-dashboard-close" class="vtc-close" type="button">${esc(t('close'))}</button>
+              </div>
+              <div class="vtc-header-row">
+                <div class="vtc-actions-left">
+                  <button id="vtc-theme-toggle" class="vtc-theme-btn" type="button" title="Toggle theme">🎨</button>
+                  <button id="vtc-edit-mode-btn" class="vtc-edit" type="button">${esc(t('editMode'))}</button>
+                </div>
+                <div class="vtc-actions-right">
+                  <button id="vtc-dashboard-close" class="vtc-close" type="button">${esc(t('close'))}</button>
+                </div>
               </div>
             </div>
           </div>
@@ -2321,8 +2365,13 @@
       editMode = !editMode;
       const btn = overlay.querySelector("#vtc-edit-mode-btn");
       btn.textContent = editMode ? t('doneEditing') : t('editMode');
-      btn.style.background = editMode ? "rgba(52,211,153,0.15)" : "rgba(251,191,36,0.15)";
-      btn.style.color = editMode ? "#34d399" : "#fbbf24";
+      if (editMode) {
+        btn.style.background = "rgba(52,211,153,0.15)";
+        btn.style.color = "#34d399";
+      } else {
+        btn.style.background = "";
+        btn.style.color = "";
+      }
       const sums = semesterSummaries[currentSemester] || [];
       overlay.querySelector("#vtc-table-body").innerHTML = buildRows(sums);
     });
