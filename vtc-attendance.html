@@ -32,19 +32,29 @@
       .lang-btn:hover {
         background: rgba(252,211,77,0.2);
       }
+      .site-header {
+        margin-bottom: 0.75rem;
+        padding: 0 2.5rem;
+      }
+      #step1 {
+        padding-top: 0.75rem;
+      }
     </style>
   </head>
   <body>
     <div>
       <div class="container">
-        <main class="card" style="position: relative;">
-          <a class="back-sq-top-left" id="mainBack" href="index.html">&larr;</a>
+        <a class="back-sq-top-left" id="mainBack" href="index.html">&larr;</a>
+
+        <header class="site-header">
+          <h1 class="title-fun" id="page-title">VTC attendance checker</h1>
+          <p class="home-subtitle" id="page-subtitle">copy the bookmarklet -> myportal -> inject -> done</p>
+        </header>
+
+        <main style="position: relative; width: 100%; max-width: 420px; text-align: center;">
           <button id="lang-toggle" class="lang-btn" type="button" title="Switch language">&#127760; EN</button>
 
-          <div id="step1" style="padding: 1.5rem 0.5rem; display: flex; flex-direction: column; align-items: center; gap: 0.75rem;">
-            <h1 id="page-title" style="margin: 0; font-size: 1.6rem; color: #fcd34d;">VTC attendance checker</h1>
-            <p id="page-subtitle" style="margin: 0; font-size: 0.85rem; color: #a8a29e; text-align: center; line-height: 1.5;">copy the bookmarklet -> myportal -> inject -> done </p>
-
+          <div id="step1" style="padding: 0.75rem 0.5rem 1.5rem; display: flex; flex-direction: column; align-items: center; gap: 0.75rem;">
             <div style="width: 100%; max-width: 320px; background: rgba(252,211,77,0.08); border: 1px solid rgba(252,211,77,0.2); border-radius: 10px; padding: 0.75rem 1rem; margin-top: 0.25rem;">
               <p id="tip-title" style="margin: 0; font-size: 0.8rem; color: #fcd34d; font-weight: 600; line-height: 1.4;">did you know?</p>
               <p id="tip-body" style="margin: 0.25rem 0 0; font-size: 0.75rem; color: #d6d3d1; line-height: 1.5;">you can export your <strong style="color:#fcd34d;">.ics</strong> and import to your Google Calendar so that you don't need to go to VTC app every time!
@@ -142,7 +152,7 @@
           lang = code;
           localStorage.setItem('vtc-page-lang', code);
           var t = i18n[code];
-          document.getElementById('page-title').textContent = t.title;
+          document.querySelector('#page-title').textContent = t.title;
           document.getElementById('page-subtitle').textContent = t.subtitle;
           document.getElementById('tip-title').textContent = t.tipTitle;
           document.getElementById('tip-body').innerHTML = t.tipBody + ' <a id="icsHowBtn" style="margin-left: 0.2rem; color: #fcd34d; font-size: 0.75rem; cursor: pointer; text-decoration: underline; vertical-align: middle;">' + t.how + '</a>';

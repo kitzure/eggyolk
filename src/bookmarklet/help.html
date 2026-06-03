@@ -30,63 +30,215 @@
         z-index: 2;
       }
       .lang-btn:hover { background: rgba(252,211,77,0.2); }
+
+      .help-container {
+        width: 100%;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 2.5rem 1rem 1rem;
+        position: relative;
+      }
+
+      .help-grid {
+        display: grid;
+        grid-template-columns: 1.2fr 1fr;
+        gap: 1.5rem;
+        align-items: start;
+      }
+
+      @media (max-width: 640px) {
+        .help-grid {
+          grid-template-columns: 1fr;
+        }
+        .help-video-col {
+          order: -1;
+        }
+      }
+
+      .help-section-title {
+        margin: 0 0 0.6rem;
+        font-size: 1rem;
+        color: #fcd34d;
+        font-weight: 600;
+      }
+
+      .help-section-desc {
+        margin: 0 0 0.8rem;
+        font-size: 0.8rem;
+        color: #a8a29e;
+        line-height: 1.5;
+      }
+
+      .bm-wrap {
+        position: relative;
+        margin-bottom: 1.5rem;
+      }
+
+      .bm-textarea {
+        width: 100%;
+        height: auto;
+        min-height: 4.5rem;
+        background: #0a0a0a;
+        border: 1px solid rgba(252,211,77,0.2);
+        border-radius: 8px;
+        padding: 0.5rem;
+        font-family: monospace;
+        font-size: 0.72rem;
+        color: #d6d3d1;
+        resize: none;
+        outline: none;
+      }
+
+      .copy-bm-btn {
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        padding: 0.25rem 0.6rem;
+        border-radius: 6px;
+        background: rgba(120,53,15,0.5);
+        border: 1px solid rgba(252,211,77,0.25);
+        color: #fbbf24;
+        font-size: 0.7rem;
+        cursor: pointer;
+        font-family: inherit;
+      }
+
+      .help-video {
+        width: 100%;
+        border-radius: 10px;
+        border: 1px solid rgba(255,255,255,0.15);
+        background: #000;
+        cursor: pointer;
+      }
+
+      .tutorial-btns {
+        display: flex;
+        gap: 0.5rem;
+        justify-content: center;
+        margin: 0.5rem 0;
+      }
+
+      .tutorial-btn {
+        padding: 0.35rem 0.9rem;
+        border-radius: 6px;
+        background: rgba(252,211,77,0.05);
+        border: 1px solid rgba(252,211,77,0.2);
+        color: #a8a29e;
+        font-size: 0.8rem;
+        cursor: pointer;
+        font-family: inherit;
+      }
+
+      .tutorial-btn.active {
+        background: rgba(252,211,77,0.2);
+        border-color: rgba(252,211,77,0.4);
+        color: #fbbf24;
+      }
+
+      .steps-title {
+        margin: 1.2rem 0 0.8rem;
+        font-size: 1rem;
+        color: #fef3c7;
+        font-weight: 600;
+      }
+
+      .step-row {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 1.25rem;
+      }
+
+      .step-num {
+        flex-shrink: 0;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: rgba(252,211,77,0.15);
+        border: 1px solid rgba(252,211,77,0.3);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: #fbbf24;
+        font-weight: 700;
+        font-size: 0.85rem;
+      }
+
+      .step-title {
+        margin: 0;
+        font-size: 0.95rem;
+        color: #fef3c7;
+        font-weight: 600;
+      }
+
+      .step-desc {
+        margin: 0.2rem 0 0;
+        font-size: 0.8rem;
+        color: #a8a29e;
+        line-height: 1.5;
+      }
+
+      .step-desc a {
+        color: #fcd34d;
+      }
     </style>
   </head>
   <body>
-    <div class="container">
-      <main class="card" style="position: relative;">
-        <a class="back-sq-top-left" href="../../vtc-attendance.html">&larr;</a>
-        <button id="lang-toggle" class="lang-btn" type="button" title="Switch language">&#127760; EN</button>
-        <div class="icon">&#128279;</div>
-        <h1 id="page-title" style="font-size: 1.65rem; margin-top: 0.4rem;">how to use the bookmarklet</h1>
+    <div class="help-container">
+      <a class="back-sq-top-left" href="../../vtc-attendance.html">&larr;</a>
+      <button id="lang-toggle" class="lang-btn" type="button" title="Switch language">&#127760; EN</button>
 
-        <div style="text-align: left; margin-top: 1rem;">
-          <!-- COMBINED BOOKMARKLET -->
-          <p id="bm-label" style="margin: 0 0 0.6rem; font-size: 1rem; color: #fcd34d; font-weight: 600;">copy this bookmarklet</p>
-          <p id="bm-desc" style="margin: 0 0 0.8rem; font-size: 0.8rem; color: #a8a29e; line-height: 1.5;">create a new browser bookmark and paste this into the URL field. it works on any VTC page.</p>
+      <header class="site-header" style="margin-bottom: 1.25rem;">
+        <h1 class="title-fun" id="page-title">how to use the bookmarklet</h1>
+      </header>
 
-          <div style="position: relative; margin-bottom: 1.5rem;">
-            <textarea id="bmCodeCombined" readonly rows="5" style="width: 100%; height: auto; min-height: 4.5rem; background: #0a0a0a; border: 1px solid rgba(252,211,77,0.2); border-radius: 8px; padding: 0.5rem; font-family: monospace; font-size: 0.72rem; color: #d6d3d1; resize: none; outline: none;">javascript:(function(d){var s=d.createElement('script');s.src='https://kitzure.github.io/eggyolk/src/bookmarklet/vtc-combined-grabber.js?t='+Math.floor(Date.now()/60000);d.body.append(s);})(document);</textarea>
-            <button class="copy-bm-btn" data-target="bmCodeCombined" style="position: absolute; top: 5px; right: 5px; padding: 0.25rem 0.6rem; border-radius: 6px; background: rgba(120,53,15,0.5); border: 1px solid rgba(252,211,77,0.25); color: #fbbf24; font-size: 0.7rem; cursor: pointer; font-family: inherit;">copy</button>
+      <div class="help-grid">
+        <!-- LEFT COLUMN -->
+        <div class="help-left-col">
+          <p id="bm-label" class="help-section-title">copy this bookmarklet</p>
+          <p id="bm-desc" class="help-section-desc">create a new browser bookmark and paste this into the URL field. it works on any VTC page.</p>
+
+          <div class="bm-wrap">
+            <textarea id="bmCodeCombined" class="bm-textarea" readonly rows="5">javascript:(function(d){var s=d.createElement('script');s.src='https://kitzure.github.io/eggyolk/src/bookmarklet/vtc-combined-grabber.js?t='+Math.floor(Date.now()/60000);d.body.append(s);})(document);</textarea>
+            <button class="copy-bm-btn" data-target="bmCodeCombined">copy</button>
           </div>
 
-          <video id="tutorialVideo" class="timetable-video" src="../../img/tutorial.mp4" poster="../../img/tutorial-poster.jpg" autoplay muted loop playsinline preload="metadata" style="width: 100%; max-width: 100%;"></video>
-          <div style="display: flex; gap: 0.5rem; justify-content: center; margin: 0.5rem 0;">
-            <button class="tutorial-btn" data-mode="pc" id="btn-pc" style="padding: 0.35rem 0.9rem; border-radius: 6px; background: rgba(252,211,77,0.2); border: 1px solid rgba(252,211,77,0.4); color: #fbbf24; font-size: 0.8rem; cursor: pointer; font-family: inherit;">PC</button>
-            <button class="tutorial-btn" data-mode="mobile" id="btn-mobile" style="padding: 0.35rem 0.9rem; border-radius: 6px; background: rgba(252,211,77,0.05); border: 1px solid rgba(252,211,77,0.2); color: #a8a29e; font-size: 0.8rem; cursor: pointer; font-family: inherit;">Mobile</button>
-          </div>
-          <p id="video-hint" class="video-hint">tap to zoom in for tutorial</p>
+          <p id="steps-title" class="steps-title">steps</p>
 
-          <!-- STEPS -->
-          <p id="steps-title" style="margin: 1.2rem 0 0.8rem; font-size: 1rem; color: #fef3c7; font-weight: 600;">steps</p>
-
-          <div style="display: flex; gap: 1rem; margin-bottom: 1.25rem;">
-            <div style="flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%; background: rgba(252,211,77,0.15); border: 1px solid rgba(252,211,77,0.3); display: inline-flex; align-items: center; justify-content: center; color: #fbbf24; font-weight: 700; font-size: 0.85rem;">1</div>
+          <div class="step-row">
+            <div class="step-num">1</div>
             <div>
-              <p id="s1-title" style="margin: 0; font-size: 0.95rem; color: #fef3c7; font-weight: 600;">log in to the VTC portal</p>
-              <p id="s1-desc" style="margin: 0.2rem 0 0; font-size: 0.8rem; color: #a8a29e; line-height: 1.5;">go to <a href="https://myportal.vtc.edu.hk/wps/myportal/sp/spostud/" target="_blank" style="color: #fcd34d;">myportal.vtc.edu.hk</a> and make sure you're logged in.</p>
+              <p id="s1-title" class="step-title">log in to the VTC portal</p>
+              <p id="s1-desc" class="step-desc">go to <a href="https://myportal.vtc.edu.hk/wps/myportal/sp/spostud/" target="_blank">myportal.vtc.edu.hk</a> and make sure you're logged in.</p>
             </div>
           </div>
 
-          <div style="display: flex; gap: 1rem; margin-bottom: 1.25rem;">
-            <div style="flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%; background: rgba(252,211,77,0.15); border: 1px solid rgba(252,211,77,0.3); display: inline-flex; align-items: center; justify-content: center; color: #fbbf24; font-weight: 700; font-size: 0.85rem;">2</div>
+          <div class="step-row">
+            <div class="step-num">2</div>
             <div>
-              <p id="s2-title" style="margin: 0; font-size: 0.95rem; color: #fef3c7; font-weight: 600;">click the bookmark</p>
-              <p id="s2-desc" style="margin: 0.2rem 0 0; font-size: 0.8rem; color: #a8a29e; line-height: 1.5;">a dark status card pops up. it fetches your calendar lessons in the background, then finds your attendance record page and grabs your present / late / absent status for every module.</p>
+              <p id="s2-title" class="step-title">click the bookmark</p>
+              <p id="s2-desc" class="step-desc">a dark status card pops up. it fetches your calendar lessons in the background, then finds your attendance record page and grabs your present / late / absent status for every module.</p>
             </div>
           </div>
 
-          <div style="display: flex; gap: 1rem; margin-bottom: 0.5rem;">
-            <div style="flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%; background: rgba(252,211,77,0.15); border: 1px solid rgba(252,211,77,0.3); display: inline-flex; align-items: center; justify-content: center; color: #fbbf24; font-weight: 700; font-size: 0.85rem;">3</div>
+          <div class="step-row">
+            <div class="step-num">3</div>
             <div>
-              <p id="s3-title" style="margin: 0; font-size: 0.95rem; color: #fef3c7; font-weight: 600;">tracker opens automatically</p>
-              <p id="s3-desc" style="margin: 0.2rem 0 0; font-size: 0.8rem; color: #a8a29e; line-height: 1.5;">the attendance tracker opens and immediately shows rates for all modules. thats all.</p>
+              <p id="s3-title" class="step-title">tracker opens automatically</p>
+              <p id="s3-desc" class="step-desc">the attendance tracker opens and immediately shows rates for all modules. thats all.</p>
             </div>
           </div>
-
-
         </div>
-      </main>
+
+        <!-- RIGHT COLUMN -->
+        <div class="help-video-col">
+          <video id="tutorialVideo" class="help-video timetable-video" src="../../img/tutorial.mp4" poster="../../img/tutorial-poster.jpg" autoplay muted loop playsinline preload="metadata"></video>
+          <div class="tutorial-btns">
+            <button class="tutorial-btn active" data-mode="pc" id="btn-pc">PC</button>
+            <button class="tutorial-btn" data-mode="mobile" id="btn-mobile">Mobile</button>
+          </div>
+          <p id="video-hint" class="video-hint" style="text-align:center;">tap to zoom in for tutorial</p>
+        </div>
+      </div>
     </div>
 
     <script>
@@ -116,7 +268,7 @@
             bmLabel: 'copy 呢個 bookmarklet',
             bmDesc: '開個新書籤，將呢段 code 貼落去個網址欄度就得。喺任何 VTC 頁面都用到。',
             copy: 'copy',
-            copied: 'copied',
+            copied: 'copied!',
             pc: '電腦',
             mobile: '電話',
             videoHint: '撳一下可以放大睇教學',
@@ -139,7 +291,7 @@
           lang = code;
           localStorage.setItem('vtc-page-lang', code);
           var t = i18n[code];
-          document.getElementById('page-title').textContent = t.title;
+          document.querySelector('#page-title').textContent = t.title;
           document.getElementById('bm-label').textContent = t.bmLabel;
           document.getElementById('bm-desc').textContent = t.bmDesc;
           document.getElementById('btn-pc').textContent = t.pc;
@@ -153,7 +305,6 @@
           document.getElementById('s3-title').textContent = t.s3Title;
           document.getElementById('s3-desc').textContent = t.s3Desc;
           btn.innerHTML = t.label;
-          // update copy button fallback text
           document.querySelectorAll('.copy-bm-btn').forEach(function (b) {
             if (b.textContent !== t.copied && b.textContent !== i18n[code === 'en' ? 'zh' : 'en'].copied) {
               b.textContent = t.copy;
@@ -212,10 +363,12 @@
         btn.addEventListener('click', function () {
           var mode = this.getAttribute('data-mode');
           tutorialBtns.forEach(function (b) {
+            b.classList.remove('active');
             b.style.background = 'rgba(252,211,77,0.05)';
             b.style.borderColor = 'rgba(252,211,77,0.2)';
             b.style.color = '#a8a29e';
           });
+          this.classList.add('active');
           this.style.background = 'rgba(252,211,77,0.2)';
           this.style.borderColor = 'rgba(252,211,77,0.4)';
           this.style.color = '#fbbf24';

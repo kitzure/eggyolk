@@ -13,33 +13,39 @@
   </head>
   <body>
     <div class="container">
-      <main class="card">
-      <div class="icon">🍳</div>
-      <h1 class="title-fun">eggyolk</h1>
-      <p class="home-subtitle">make tools more easy to use</p>
-      <br>
-      <ul class="toolbox">
-        <li>
-          <a class="tool" href="vtc-attendance.html">
+      <header class="site-header">
+        <span class="header-icon">🍳</span>
+        <h1 class="title-fun">eggyolk</h1>
+        <p class="home-subtitle">make tools more easy to use</p>
+      </header>
+
+      <div class="divider"></div>
+
+      <main class="tools-grid">
+        <a class="tool-card" href="vtc-attendance.html">
+          <div class="tool-icon-wrap">
             <svg class="tool-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <circle cx="12" cy="12" r="8" />
               <path d="M12 8v5l3 2" />
             </svg>
-            <span class="tool-name">VTC attendance checker</span>
-          </a>
-        </li>
-        <li>
-          <a class="tool" href="paycheck-when.html">
-            <svg class="tool-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></svg>
-            <span class="tool-name">paycheck when (WIP)</span>
-          </a>
-        </li>
-      </ul>
+          </div>
+          <span class="tool-name">VTC attendance checker</span>
+          <span class="tool-desc">check your attendance in vtc myportal</span>
+        </a>
+
+        <a class="tool-card" href="paycheck-when.html">
+          <div class="tool-icon-wrap money">
+            <svg class="tool-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/></svg>
+          </div>
+          <span class="tool-name">moneytracker</span>
+          <span class="tool-desc">make your money manage skills better</span>
+        </a>
+      </main>
+
       <a class="about-top-right" href="about.html">
         <span class="about-q">?</span>
         <span class="about-tooltip">about me</span>
       </a>
-    </main>
     </div>
   </body>
 </html>

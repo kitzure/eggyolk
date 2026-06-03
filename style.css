@@ -21,6 +21,11 @@ body {
   flex-direction: column;
   align-items: center;
   gap: 1.25rem;
+  position: relative;
+  padding-top: 2.5rem;
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
 }
 
 .about-btn {
@@ -63,15 +68,23 @@ body {
   text-align: center;
 }
 
+.tools-page {
+  width: min(92vw, 560px);
+  padding: 2rem 1.5rem;
+  background: transparent;
+  box-shadow: none;
+}
+
 .icon {
-  font-size: 3rem;
-  margin-bottom: 0.5rem;
+  font-size: 2.5rem;
+  margin-bottom: 0.25rem;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));
 }
 
 h1 {
   margin-top: 0;
   margin-bottom: 0.25rem;
-  font-size: 2rem;
+  font-size: 1.75rem;
 }
 
 .title-fun {
@@ -98,52 +111,104 @@ h1 {
 }
 
 .home-subtitle {
-  margin: 0 0 0.2rem;
+  margin: 0.25rem 0 0;
   font-size: 0.85rem;
-  color: #78716c;
+  color: #a8a29e;
 }
 
-.toolbox {
-  list-style: none;
-  padding: 0;
-  margin: 0;
+/* Site Header */
+.site-header {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.header-icon {
+  display: block;
+  font-size: 3.5rem;
+  margin-bottom: 0.25rem;
+  filter: drop-shadow(0 3px 6px rgba(0,0,0,0.4));
+}
+
+.divider {
+  width: 100%;
+  max-width: 400px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, rgba(252, 211, 77, 0.2) 20%, rgba(252, 211, 77, 0.2) 80%, transparent 100%);
+  margin: 0 auto 1.5rem;
+}
+
+/* Tools Grid */
+.tools-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+  width: 100%;
+  max-width: 600px;
+}
+
+.tool-card {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-}
-
-.tool {
-  display: flex;
   align-items: center;
   gap: 0.6rem;
-  padding: 1rem 1.25rem;
-  border-radius: 12px;
-  background: rgba(120, 53, 15, 0.25);
-  border: 1px solid rgba(252, 211, 77, 0.12);
+  padding: 1.5rem 1rem;
+  border-radius: 14px;
+  background: rgba(120, 53, 15, 0.15);
+  border: 1px solid rgba(252, 211, 77, 0.08);
   text-decoration: none;
-  text-align: left;
-  transition: background 0.2s, border-color 0.2s;
+  text-align: center;
+  transition: transform 0.2s ease, background 0.2s, border-color 0.2s, box-shadow 0.2s;
 }
 
-.tool:hover {
-  background: rgba(120, 53, 15, 0.5);
-  border-color: rgba(252, 211, 77, 0.30);
+.tool-card:hover {
+  transform: translateY(-3px);
+  background: rgba(120, 53, 15, 0.25);
+  border-color: rgba(252, 211, 77, 0.18);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.tool-icon-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: rgba(251, 191, 36, 0.12);
+  color: #fbbf24;
+}
+
+.tool-icon-wrap.money {
+  background: rgba(52, 211, 153, 0.12);
+  color: #6ee7b7;
 }
 
 .tool-name {
   display: block;
-  font-size: 1.1rem;
+  font-size: 0.95rem;
   font-weight: 600;
   color: #fef3c7;
-  margin-bottom: 0.25rem;
+  line-height: 1.3;
 }
 
 .tool-icon {
-  width: 1.2rem;
-  height: 1.2rem;
+  width: 1.5rem;
+  height: 1.5rem;
   flex-shrink: 0;
-  color: #fbbf24;
   display: inline-block;
+}
+
+.tool-desc {
+  font-size: 0.8rem;
+  color: #a8a29e;
+  line-height: 1.4;
+}
+
+/* About Page Content */
+.about-content {
+  width: 100%;
+  max-width: 480px;
+  text-align: center;
 }
 
 .tool-desc {
