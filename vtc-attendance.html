@@ -10,35 +10,59 @@
     <meta name="theme-color" content="#fbbf24" />
     <title>VTC attendance checker</title>
     <link rel="stylesheet" href="style.css" />
+    <style>
+      .lang-btn {
+        position: absolute;
+        top: 0.75rem;
+        right: 0.75rem;
+        background: rgba(252,211,77,0.12);
+        border: 1px solid rgba(252,211,77,0.25);
+        color: #fcd34d;
+        border-radius: 8px;
+        padding: 6px 10px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        cursor: pointer;
+        font-family: inherit;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        z-index: 2;
+      }
+      .lang-btn:hover {
+        background: rgba(252,211,77,0.2);
+      }
+    </style>
   </head>
   <body>
     <div>
       <div class="container">
-        <main class="card">
+        <main class="card" style="position: relative;">
           <a class="back-sq-top-left" id="mainBack" href="index.html">&larr;</a>
+          <button id="lang-toggle" class="lang-btn" type="button" title="Switch language">&#127760; EN</button>
 
           <div id="step1" style="padding: 1.5rem 0.5rem; display: flex; flex-direction: column; align-items: center; gap: 0.75rem;">
-            <h1 style="margin: 0; font-size: 1.6rem; color: #fcd34d;">VTC attendance checker</h1>
-            <p style="margin: 0; font-size: 0.85rem; color: #a8a29e; text-align: center; line-height: 1.5;">copy the bookmarklet -> myportal -> inject -> done </p>
+            <h1 id="page-title" style="margin: 0; font-size: 1.6rem; color: #fcd34d;">VTC attendance checker</h1>
+            <p id="page-subtitle" style="margin: 0; font-size: 0.85rem; color: #a8a29e; text-align: center; line-height: 1.5;">copy the bookmarklet -> myportal -> inject -> done </p>
 
             <div style="width: 100%; max-width: 320px; background: rgba(252,211,77,0.08); border: 1px solid rgba(252,211,77,0.2); border-radius: 10px; padding: 0.75rem 1rem; margin-top: 0.25rem;">
-              <p style="margin: 0; font-size: 0.8rem; color: #fcd34d; font-weight: 600; line-height: 1.4;">did you know?</p>
-              <p style="margin: 0.25rem 0 0; font-size: 0.75rem; color: #d6d3d1; line-height: 1.5;">you can export your <strong style="color:#fcd34d;">.ics</strong> and import to your Google Calendar so that you don't need to go to VTC app every time!
+              <p id="tip-title" style="margin: 0; font-size: 0.8rem; color: #fcd34d; font-weight: 600; line-height: 1.4;">did you know?</p>
+              <p id="tip-body" style="margin: 0.25rem 0 0; font-size: 0.75rem; color: #d6d3d1; line-height: 1.5;">you can export your <strong style="color:#fcd34d;">.ics</strong> and import to your Google Calendar so that you don't need to go to VTC app every time!
                 <a id="icsHowBtn" style="margin-left: 0.2rem; color: #fcd34d; font-size: 0.75rem; cursor: pointer; text-decoration: underline; vertical-align: middle;">how?</a>
               </p>
             </div>
 
-            <a class="vtc-btn" href="src/bookmarklet/help.html" style="text-decoration:none;display:inline-flex; align-items:center; gap:0.4rem; margin-top: 0.5rem;">
+            <a id="get-btn" class="vtc-btn" href="src/bookmarklet/help.html" style="text-decoration:none;display:inline-flex; align-items:center; gap:0.4rem; margin-top: 0.5rem;">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;">
                 <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
                 <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
               </svg>
-              get bookmarklet
+              <span id="get-btn-text">get bookmarklet</span>
             </a>
 
             <div class="disclaimer-box" style="margin-top: 0.75rem;">
               <span>&#9888;</span>
-              <span>for reference only &mdash; not 100% confirmed. always double-check with your official attendance.</span>
+              <span id="disclaimer-text">for reference only &mdash; not 100% confirmed. always double-check with your official attendance.</span>
             </div>
           </div>
 
@@ -56,32 +80,82 @@
     <script src="src/vtc-attendance.js"></script>
 
     <script>
-      /* ics tutorial zoom popup */
+      /* Language toggle + ICS tutorial */
       (function () {
+        var i18n = {
+          en: {
+            title: 'VTC attendance checker',
+            subtitle: 'copy the bookmarklet -> myportal -> inject -> done',
+            tipTitle: 'did you know?',
+            tipBody: 'you can export your <strong style="color:#fcd34d;">.ics</strong> and import to your Google Calendar so that you don\'t need to go to VTC app every time!',
+            how: 'how?',
+            btn: 'get bookmarklet',
+            disclaimer: 'for reference only &mdash; not 100% confirmed. always double-check with your official attendance.',
+            label: '&#127760; EN'
+          },
+          zh: {
+            title: 'VTC 出席率Checker',
+            subtitle: 'copy 個 bookmarklet -> myportal -> 貼上 -> 搞掂',
+            tipTitle: '你知道嗎？',
+            tipBody: '你可以export <strong style="color:#fcd34d;">.ics</strong> 檔案出嚟之後再匯入 Google 日曆，以後就唔使次次都開 VTC App 睇啦！',
+            how: '點做？',
+            btn: '攞 bookmarklet',
+            disclaimer: '只供參考 &mdash; 未必 100% 準確。請以官方出席紀錄為準。',
+            label: '&#127760; 中文'
+          }
+        };
+
         var video = document.getElementById('icsTutorialVideo');
-        var btn = document.getElementById('icsHowBtn');
-        if (!video || !btn) return;
+        var _icsHandler = null;
+
+        function bindIcsHowBtn() {
+          var btn = document.getElementById('icsHowBtn');
+          if (!video || !btn) return;
+          if (_icsHandler) btn.removeEventListener('click', _icsHandler);
+          _icsHandler = function () {
+            if (video.classList.contains('zoomed')) return;
+            var bd = document.createElement('div');
+            bd.className = 'video-backdrop';
+            document.body.appendChild(bd);
+            video.style.display = 'block';
+            video.classList.add('zoomed');
+            video.currentTime = 0;
+            video.play();
+
+            function closeZoom() {
+              video.classList.remove('zoomed');
+              video.pause();
+              video.style.display = 'none';
+              bd.remove();
+            }
+
+            bd.addEventListener('click', closeZoom);
+            video.addEventListener('click', closeZoom);
+          };
+          btn.addEventListener('click', _icsHandler);
+        }
+
+        var lang = localStorage.getItem('vtc-page-lang') || 'en';
+        var btn = document.getElementById('lang-toggle');
+
+        function setLang(code) {
+          lang = code;
+          localStorage.setItem('vtc-page-lang', code);
+          var t = i18n[code];
+          document.getElementById('page-title').textContent = t.title;
+          document.getElementById('page-subtitle').textContent = t.subtitle;
+          document.getElementById('tip-title').textContent = t.tipTitle;
+          document.getElementById('tip-body').innerHTML = t.tipBody + ' <a id="icsHowBtn" style="margin-left: 0.2rem; color: #fcd34d; font-size: 0.75rem; cursor: pointer; text-decoration: underline; vertical-align: middle;">' + t.how + '</a>';
+          document.getElementById('get-btn-text').textContent = t.btn;
+          document.getElementById('disclaimer-text').innerHTML = t.disclaimer;
+          btn.innerHTML = t.label;
+          bindIcsHowBtn();
+        }
 
         btn.addEventListener('click', function () {
-          if (video.classList.contains('zoomed')) return;
-          var bd = document.createElement('div');
-          bd.className = 'video-backdrop';
-          document.body.appendChild(bd);
-          video.style.display = 'block';
-          video.classList.add('zoomed');
-          video.currentTime = 0;
-          video.play();
-
-          function closeZoom() {
-            video.classList.remove('zoomed');
-            video.pause();
-            video.style.display = 'none';
-            bd.remove();
-          }
-
-          bd.addEventListener('click', closeZoom);
-          video.addEventListener('click', closeZoom);
+          setLang(lang === 'en' ? 'zh' : 'en');
         });
+        setLang(lang);
       })();
     </script>
 
