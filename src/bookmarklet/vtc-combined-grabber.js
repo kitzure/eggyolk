@@ -55,7 +55,8 @@
       passed: 'passed',
       almostPass: 'almost pass',
       noRecord: 'no record',
-      absentWarnInstantFail: '≥30% = instant fail',
+      absentWarnInstantFail: '≥{threshold}% = instant fail',
+      exportIcsPrompt: 'Which modules do you want to put in your calendar?',
       warningTitle: 'for reference only',
       warningSub: 'not 100% confirmed. always double-check with your official attendance.',
       roundUpFmt: '(round up as {n}%)',
@@ -143,7 +144,8 @@
       passed: 'Pass',
       almostPass: '差唔多Pass',
       noRecord: '沒有紀錄',
-      absentWarnInstantFail: '≥30% = 即炒',
+      absentWarnInstantFail: '≥{threshold}% = 即炒',
+      exportIcsPrompt: '你想將哪些單元加入日曆？',
       warningTitle: '只供參考',
       warningSub: '未必 100% 準確。請以官方出席紀錄為準。',
       roundUpFmt: '（四捨五入為 {n}%）',
@@ -632,15 +634,16 @@
       return summaries.map(s => {
         const key = `${semName}::${s.moduleCode}`;
         const override = manualOverrides[key];
-        if (!override) return s;
 
-        // support editing either per-sem calendar hours or the total calendar hours
+        // Always recalculate status fields based on current threshold,
+        // even when there is no manual override, so threshold changes
+        // update every module correctly.
         let newCalHours = s.calendarScheduledHours;
         let newTotalHours = s.totalCalendarScheduledHours ?? s.calendarScheduledHours;
 
-        if (override.calendarScheduledHours != null) {
+        if (override && override.calendarScheduledHours != null) {
           newCalHours = +override.calendarScheduledHours;
-        } else if (override.totalCalendarScheduledHours != null) {
+        } else if (override && override.totalCalendarScheduledHours != null) {
           newTotalHours = +override.totalCalendarScheduledHours;
           // if we have an original total, preserve the same ratio for this semester
           if (s.totalCalendarScheduledHours && s.totalCalendarScheduledHours > 0) {
@@ -650,9 +653,8 @@
             // fallback: if no original total, apply total as this semester's hours
             newCalHours = newTotalHours;
           }
-        } else {
-          return s;
         }
+
         const attHours = s.attendedHours;
         const recHours = s.attendanceRecordHours;
         const deductedHours = s.deductedHours;
@@ -685,7 +687,7 @@
           overallEffectiveAbsentRate: effectiveAbsentRate,
           status70,
           bestStatus70,
-          _manualOverride: true
+          _manualOverride: !!override
         };
       });
     };
@@ -696,8 +698,17 @@
       .replaceAll(">", "&gt;")
       .replaceAll('"', "&quot;");
 
+    const isFailedByAbsentRate = s => {
+      const failThreshold = 100 - currentThreshold;
+      const isCrossSem = /M$/i.test(s.moduleCode);
+      const isOverallView = currentSemester === "Overall";
+      const effAbsent = (isCrossSem && !isOverallView) ? (s.overallEffectiveAbsentRate ?? s.effectiveAbsentRate) : s.effectiveAbsentRate;
+      return effAbsent >= failThreshold;
+    };
+
     const getStatusLabel = s => {
       if (s.bestStatus70 === "CANNOT_REACH_70_EVEN_IF_FUTURE_PRESENT") return "failed";
+      if (isFailedByAbsentRate(s)) return "failed";
       if (s.status70 === "BELOW_70_NOW") return "almostPass";
       if (s.status70 === "NO_RECORD") return "noRecord";
       return "passed";
@@ -705,6 +716,7 @@
 
     const getStatusColor = s => {
       if (s.bestStatus70 === "CANNOT_REACH_70_EVEN_IF_FUTURE_PRESENT") return "#f87171";
+      if (isFailedByAbsentRate(s)) return "#f87171";
       if (s.status70 === "BELOW_70_NOW") return "#fbbf24";
       if (s.status70 === "NO_RECORD") return "#a8a29e";
       return "#34d399";
@@ -927,8 +939,9 @@
 
         const effVal = (isCrossSem && !isOverallView) ? (s.overallEffectiveAbsentRate ?? s.effectiveAbsentRate) : s.effectiveAbsentRate;
         const effLabel = (isCrossSem && !isOverallView) ? `${t('overall')} ${t('absentRateLabel')}` : t('absentRateLabel');
-        const absentWarn = effVal >= 30 ? ` <span class="vtc-absent-warn">${esc(t('absentWarnInstantFail'))}</span>` : "";
-        const absentColor = effVal >= 30 ? "#f87171" : "#fb923c";
+        const failThreshold = 100 - currentThreshold;
+        const absentWarn = effVal >= failThreshold ? ` <span class="vtc-absent-warn">${esc(t('absentWarnInstantFail').replace('{threshold}', failThreshold))}</span>` : "";
+        const absentColor = effVal >= failThreshold ? "#f87171" : "#fb923c";
         // show effective absent rate when there are absences OR lates (late still impacts attendance)
         const effDisplay = effVal != null ? Math.round(effVal) : null;
         const roundPart = effDisplay != null ? esc(t('roundUpFmt')).replace('{n}', effDisplay) : '';
@@ -980,18 +993,18 @@
     const buildRating = summaries => {
       const total = summaries.length;
       if (total === 0) return { labelKey: "ratingUnknown", color: "#78716c", emoji: "&#128528;" };
-      const green = summaries.filter(s => s.status70 === "OK_NOW").length;
-      const red = summaries.filter(s => s.bestStatus70 === "CANNOT_REACH_70_EVEN_IF_FUTURE_PRESENT").length;
+      const green = summaries.filter(s => s.status70 === "OK_NOW" && !isFailedByAbsentRate(s)).length;
+      const red = summaries.filter(s => s.bestStatus70 === "CANNOT_REACH_70_EVEN_IF_FUTURE_PRESENT" || isFailedByAbsentRate(s)).length;
       if (green / total >= 0.6) return { labelKey: "ratingExcellent", color: "#34d399", emoji: "&#128513;" };
       if (red / total >= 0.4) return { labelKey: "ratingBad", color: "#f87171", emoji: "&#128555;" };
       return { labelKey: "ratingNormal", color: "#fbbf24", emoji: "&#128528;" };
     };
 
     const buildPieChart = (summaries, rating) => {
-      const green = summaries.filter(s => s.status70 === "OK_NOW").length;
-      const yellow = summaries.filter(s => s.status70 === "BELOW_70_NOW" && s.bestStatus70 !== "CANNOT_REACH_70_EVEN_IF_FUTURE_PRESENT").length;
-      const red = summaries.filter(s => s.bestStatus70 === "CANNOT_REACH_70_EVEN_IF_FUTURE_PRESENT").length;
-      const grey = summaries.filter(s => s.status70 === "NO_RECORD").length;
+      const green = summaries.filter(s => s.status70 === "OK_NOW" && !isFailedByAbsentRate(s)).length;
+      const yellow = summaries.filter(s => s.status70 === "BELOW_70_NOW" && s.bestStatus70 !== "CANNOT_REACH_70_EVEN_IF_FUTURE_PRESENT" && !isFailedByAbsentRate(s)).length;
+      const red = summaries.filter(s => s.bestStatus70 === "CANNOT_REACH_70_EVEN_IF_FUTURE_PRESENT" || isFailedByAbsentRate(s)).length;
+      const grey = summaries.filter(s => s.status70 === "NO_RECORD" && !isFailedByAbsentRate(s)).length;
       const total = summaries.length;
       if (total === 0) return '';
 
@@ -1401,6 +1414,12 @@
           border: 1px solid rgba(11,61,145,0.12);
           color: #0b3d91;
         }
+        #vtc-attendance-dashboard-overlay.vtc-theme-portal .vtc-export-btn:hover,
+        #vtc-attendance-dashboard-overlay.vtc-theme-portal .vtc-export-filter-btn:hover {
+          background: rgba(11,61,145,0.12);
+          border-color: rgba(11,61,145,0.18);
+          color: #0b3d91;
+        }
         /* high-specificity portal override to beat base #vtc-ics-filter-toggle rule */
         #vtc-attendance-dashboard-overlay.vtc-theme-portal #vtc-ics-filter-toggle {
           background: rgba(11,61,145,0.06);
@@ -1777,8 +1796,6 @@
             white-space: nowrap;
           }
           #vtc-attendance-dashboard-overlay #vtc-ics-filter-panel {
-            right: 0;
-            left: auto;
             width: 260px;
             max-width: calc(100vw - 20px);
           }
@@ -2100,11 +2117,13 @@
           ${icsModules.length > 0 ? `
           <div class="vtc-ics-section">
             <button id="vtc-dashboard-ics-btn" class="vtc-export-btn vtc-th-tip" type="button" data-tip="${esc(t('exportIcsTitle'))}">${esc(t('exportIcs'))}</button>
-            <div style="position:relative;display:inline-block;">
-              <button id="vtc-ics-filter-toggle" class="vtc-export-filter-btn" type="button">${esc(t('filterModules'))}</button>
-              <div id="vtc-ics-filter-panel" style="display:none;position:absolute;top:calc(100% + 6px);right:0;z-index:1000;width:220px;background:rgba(10,10,10,0.98);border:1px solid rgba(252,211,77,0.2);border-radius:8px;padding:10px 12px;box-shadow:0 8px 24px rgba(0,0,0,0.5);">
-                <p style="margin:0 0 6px;font-size:0.75rem;color:#fcd34d;font-weight:600;">${esc(t('selectModulesToExport'))}</p>
-                <div id="vtc-ics-filter-list" style="display:flex;flex-direction:column;max-height:200px;overflow-y:auto;"></div>
+            <div id="vtc-ics-modal-backdrop" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.5);"></div>
+            <div id="vtc-ics-filter-panel" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:1001;width:260px;background:rgba(10,10,10,0.98);border:1px solid rgba(252,211,77,0.2);border-radius:8px;padding:14px 16px;box-shadow:0 8px 24px rgba(0,0,0,0.5);">
+              <p id="vtc-ics-modal-title" style="margin:0 0 10px;font-size:0.85rem;color:#fcd34d;font-weight:600;">${esc(t('exportIcsPrompt'))}</p>
+              <div id="vtc-ics-filter-list" style="display:flex;flex-direction:column;max-height:240px;overflow-y:auto;margin-bottom:12px;"></div>
+              <div style="display:flex;justify-content:flex-end;gap:8px;">
+                <button id="vtc-ics-filter-cancel" class="vtc-export-filter-btn" type="button">${esc(t('close'))}</button>
+                <button id="vtc-ics-filter-export" class="vtc-export-btn" type="button">${esc(t('exportIcs'))}</button>
               </div>
             </div>
           </div>` : `
@@ -2262,7 +2281,7 @@
 
     const icsFilterPanel = overlay.querySelector("#vtc-ics-filter-panel");
     const icsFilterList = overlay.querySelector("#vtc-ics-filter-list");
-    const icsFilterToggle = overlay.querySelector("#vtc-ics-filter-toggle");
+    const icsModalBackdrop = overlay.querySelector("#vtc-ics-modal-backdrop");
 
     const renderIcsFilterList = () => {
       if (!icsFilterList || icsModules.length === 0) return;
@@ -2376,33 +2395,68 @@
 
     renderIcsFilterList();
 
-    if (icsFilterToggle && icsFilterPanel) {
-      icsFilterToggle.addEventListener('click', () => {
-        const isHidden = icsFilterPanel.style.display === 'none';
-        icsFilterPanel.style.display = isHidden ? 'block' : 'none';
-        icsFilterToggle.textContent = isHidden ? t('hideFilter') : t('filterModules');
-      });
-      icsFilterPanel.style.display = 'none';
+    const showIcsModal = () => {
+      if (icsFilterPanel) icsFilterPanel.style.display = 'block';
+      if (icsModalBackdrop) icsModalBackdrop.style.display = 'block';
+    };
+
+    const hideIcsModal = () => {
+      if (icsFilterPanel) icsFilterPanel.style.display = 'none';
+      if (icsModalBackdrop) icsModalBackdrop.style.display = 'none';
+    };
+
+    if (icsFilterPanel) {
+      hideIcsModal();
     }
 
     overlay.querySelector("#vtc-dashboard-ics-btn").addEventListener("click", () => {
-      const btn = overlay.querySelector("#vtc-dashboard-ics-btn");
-      const originalText = btn.textContent;
-      btn.textContent = t('exporting');
-      btn.disabled = true;
-      try {
-        const filteredEvents = calendarEvents.filter(ev => {
-          const code = moduleCodeFromText(getEventText(ev));
-          return !code || icsSelected.has(code); // keep non-module events (holidays etc.) or selected modules
-        });
-        download('vtc-calendar-events.ics', toIcs(filteredEvents), 'text/calendar;charset=utf-8');
-      } finally {
-        setTimeout(() => {
-          btn.textContent = originalText;
-          btn.disabled = false;
-        }, 1200);
+      if (icsModules.length === 0) {
+        const btn = overlay.querySelector("#vtc-dashboard-ics-btn");
+        const originalText = btn.textContent;
+        btn.textContent = t('exporting');
+        btn.disabled = true;
+        try {
+          download('vtc-calendar-events.ics', toIcs(calendarEvents), 'text/calendar;charset=utf-8');
+        } finally {
+          setTimeout(() => {
+            btn.textContent = originalText;
+            btn.disabled = false;
+          }, 1200);
+        }
+        return;
       }
+      showIcsModal();
     });
+
+    const icsCancelBtn = overlay.querySelector("#vtc-ics-filter-cancel");
+    if (icsCancelBtn) icsCancelBtn.addEventListener("click", hideIcsModal);
+
+    const icsExportBtn = overlay.querySelector("#vtc-ics-filter-export");
+    if (icsExportBtn) {
+      icsExportBtn.addEventListener("click", () => {
+        hideIcsModal();
+        const btn = overlay.querySelector("#vtc-dashboard-ics-btn");
+        const originalText = btn.textContent;
+        btn.textContent = t('exporting');
+        btn.disabled = true;
+        try {
+          const filteredEvents = calendarEvents.filter(ev => {
+            const code = moduleCodeFromText(getEventText(ev));
+            return !code || icsSelected.has(code); // keep non-module events (holidays etc.) or selected modules
+          });
+          download('vtc-calendar-events.ics', toIcs(filteredEvents), 'text/calendar;charset=utf-8');
+        } finally {
+          setTimeout(() => {
+            btn.textContent = originalText;
+            btn.disabled = false;
+          }, 1200);
+        }
+      });
+    }
+
+    if (icsModalBackdrop) {
+      icsModalBackdrop.addEventListener('click', hideIcsModal);
+    }
 
     overlay.querySelector("#vtc-edit-mode-btn").addEventListener("click", () => {
       editMode = !editMode;
@@ -2501,11 +2555,12 @@
         icsBtn.textContent = t('exportIcs');
         icsBtn.title = t('exportIcsTitle');
       }
-      const filterBtn = overlay.querySelector('#vtc-ics-filter-toggle');
-      if (filterBtn) filterBtn.textContent = t('filterModules');
-      // ICS filter panel title and list
-      const filterTitle = icsFilterPanel && icsFilterPanel.querySelector('p');
-      if (filterTitle) filterTitle.textContent = t('selectModulesToExport');
+      const icsCancelBtnText = overlay.querySelector('#vtc-ics-filter-cancel');
+      if (icsCancelBtnText) icsCancelBtnText.textContent = t('close');
+      const icsExportBtnText = overlay.querySelector('#vtc-ics-filter-export');
+      if (icsExportBtnText) icsExportBtnText.textContent = t('exportIcs');
+      const modalTitle = overlay.querySelector('#vtc-ics-modal-title');
+      if (modalTitle) modalTitle.textContent = t('exportIcsPrompt');
       renderIcsFilterList();
       // semester select: translate all semester names
       const semSel = overlay.querySelector('#vtc-semester-select');
