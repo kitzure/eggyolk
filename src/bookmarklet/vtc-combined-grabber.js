@@ -9,8 +9,12 @@
 //   3. Share the bookmarklet with users.
 
 (function () {
-  const RANGE_START = new Date(2025, 8, 1);  // 2025-09-01
-  const RANGE_END   = new Date(2026, 8, 1);  // 2026-09-01
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const month = now.getMonth(); // 0-11
+  const startYear = month < 8 ? currentYear - 1 : currentYear;
+  const RANGE_START = new Date(startYear, 8, 1);  // Sep 1 of academic year start
+  const RANGE_END   = new Date(startYear + 1, 8, 1);  // Sep 1 of next year
   let currentThreshold = 70;
   try {
     const savedThreshold = localStorage.getItem('vtc_threshold');
@@ -109,6 +113,7 @@
       statusErrorTitle: 'Something went wrong',
       statusDone: 'Done!',
       statusErrorShort: 'Error',
+      doNotLeavePage: 'DO NOT LEAVE THE PAGE',
       // ── Language-detection alert (when portal is in Chinese) ──
       languageDetected: 'Detected non-English page language.',
       languageIssueTitle: 'Language issue',
@@ -198,6 +203,7 @@
       statusErrorTitle: '發生錯誤',
       statusDone: '完成！',
       statusErrorShort: '錯誤',
+      doNotLeavePage: '請勿離開此頁面',
       // ── Language-detection alert (when portal is in Chinese) ──
       languageDetected: '偵測到非英文頁面。',
       languageIssueTitle: '語言問題',
@@ -218,6 +224,18 @@
     return;
   }
   window.vtcIntegratedScraper = true;
+
+  // Prevent accidental page leave while grabbing
+  var preventLeave = function(e) {
+    e.preventDefault();
+    e.returnValue = '';
+    return '';
+  };
+  window.addEventListener('beforeunload', preventLeave);
+  // Store the remover so we can detach it later
+  window._vtcPreventLeave = function() {
+    window.removeEventListener('beforeunload', preventLeave);
+  };
 
   console.log('[VTC Attendance] Integrated grabber loaded.');
 
@@ -405,6 +423,7 @@
         '<div id="vtc-status-icon" class="vtc-spinner"></div>' +
         '<strong id="vtc-status-subtitle" style="color:#fbbf24;font-size:14px;letter-spacing:0.3px;">Grabbing...</strong>' +
       '</div>' +
+      '<div id="vtc-status-warning" class="vtc-status-warning" style="display:none;margin:6px 0;padding:8px 6px;font-size:13px;color:#f87171;font-weight:700;text-align:center;letter-spacing:0.3px;background:rgba(248,113,113,0.08);border-radius:6px;border:1px solid rgba(248,113,113,0.2);">&#9888; ' + tStatus('doNotLeavePage') + '</div>' +
       '<div id="vtc-status-steps" class="vtc-steps"></div>' +
       '<div class="vtc-status-footer">made with &#10084; by CKHO and yoke</div>';
 
@@ -477,6 +496,10 @@
     ensureStatusCard();
     setStatusIconAndTitle(type);
     renderSteps(type);
+    var warning = document.getElementById('vtc-status-warning');
+    if (warning) {
+      warning.style.display = (type !== 'success' && type !== 'error') ? 'block' : 'none';
+    }
   }
 
   function pushStep(text) {
@@ -492,6 +515,13 @@
 
   function removeStatus(delay) {
     if (!vtcStatusCard) return;
+    var warning = document.getElementById('vtc-status-warning');
+    if (warning) warning.style.display = 'none';
+    // Remove beforeunload handler so user can leave freely
+    if (window._vtcPreventLeave) {
+      window._vtcPreventLeave();
+      window._vtcPreventLeave = null;
+    }
     setTimeout(() => {
       if (vtcStatusCard) {
         vtcStatusCard.style.transition = 'opacity 0.4s ease, transform 0.4s ease';

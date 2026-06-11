@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta property="og:title" content="wisewage">
+  <meta property="og:description" content="a budget calculator for HK paychecks">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://kitzure.github.io/eggyolk/wisewage.html">
+  <meta name="theme-color" content="#000000">
+  <title>wisewage</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="wisewagestyle.css" />
+</head>
+<body>
+  <div class="splash-screen" id="splash">
+    <div class="splash-content">
+      <h1 class="splash-title">wisewage</h1>
+      <div class="splash-bar"><div class="splash-bar-inner"></div></div>
+    </div>
+  </div>
+
+  <!-- Part-time Warning Modal -->
+  <div class="modal-overlay" id="warning-modal">
+    <div class="modal-card">
+      <div class="modal-header">⚠️ before you start</div>
+      <div class="modal-body">
+        <p><strong>wisewage</strong> is designed primarily for <strong>part-time, freelance, or casual workers</strong>.</p>
+        <p style="margin-top:8px;">if you have a full-time job with a fixed monthly salary, there are many dedicated budgeting apps that will serve you better.</p>
+        <p style="margin-top:8px;">this tool is built for personal use — for tracking irregular shifts, daily wages, and simple pay calculations.</p>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="warning-back">go back to eggyolk</button>
+        <button class="btn" id="warning-continue">continue to wisewage</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="app-wrapper" class="main-hidden">
+  <div class="top-bar">
+    <span class="top-bar-title" id="logo-btn" style="cursor: pointer;" title="go to dashboard">🍳</span>
+    <div class="top-bar-menu">
+      <span class="top-bar-item" data-tab="dashboard">dashboard</span>
+      <span class="top-bar-item" data-tab="stats">stats</span>
+      <span class="top-bar-item" data-tab="timesheet">timesheet</span>
+      <span class="top-bar-item" data-tab="profile">profile</span>
+      <span class="top-bar-item" data-tab="settings">settings</span>
+    </div>
+    <div class="top-bar-actions">
+      <a href="index.html">← back to eggyolk</a>
+    </div>
+  </div>
+
+    <div class="app-body">
+      <div class="activity-bar">
+        <button class="activity-btn active" data-tab="dashboard" title="dashboard">🏠</button>
+        <button class="activity-btn" data-tab="stats" title="stats">📈</button>
+        <button class="activity-btn" data-tab="timesheet" title="timesheet">📅</button>
+        <button class="activity-btn" data-tab="profile" title="profile">👤</button>
+        <div class="activity-bar-bottom">
+          <button class="activity-btn" data-tab="settings" title="settings">⚙️</button>
+          <button class="activity-btn" data-tab="back" title="back to eggyolk">←</button>
+        </div>
+      </div>
+
+    <div class="sidebar">
+      <div class="sidebar-title" id="sidebar-title">welcome</div>
+      <div id="sidebar-content"></div>
+    </div>
+
+    <div class="main">
+    <div class="content" id="content">
+      <div class="tab-panel active" id="tab-welcome">
+        <div class="welcome-page">
+          <div class="welcome-header">
+            <h1 class="welcome-title">wisewage</h1>
+            <p class="welcome-subtitle">a budget calculator for hk paychecks</p>
+          </div>
+          <div class="welcome-body">
+            <div class="welcome-left">
+              <div class="welcome-section">
+                <h3 class="welcome-section-title">Start</h3>
+                <div class="welcome-list">
+                  <button class="welcome-item" id="welcome-start-profile">
+                    <span class="welcome-item-icon">👤</span>
+                    <span class="welcome-item-text">Set your profile</span>
+                    <span class="welcome-item-desc">add your name and salary</span>
+                  </button>
+                  <button class="welcome-item" id="welcome-start-import">
+                    <span class="welcome-item-icon">📥</span>
+                    <span class="welcome-item-text">Import data</span>
+                    <span class="welcome-item-desc">restore from a backup</span>
+                  </button>
+                </div>
+              </div>
+              <div class="welcome-section" id="welcome-recent-section">
+                <h3 class="welcome-section-title">Recent</h3>
+                <div class="welcome-list" id="welcome-recent-list">
+                  <div class="welcome-item-text" style="color:var(--text-secondary);font-size:0.8rem;">no recent activity</div>
+                </div>
+              </div>
+            </div>
+            <div class="welcome-right">
+              <div class="welcome-section">
+                <h3 class="welcome-section-title">Walkthroughs</h3>
+                <div class="welcome-cards">
+                  <div class="welcome-card">
+                    <div class="welcome-card-icon">🚀</div>
+                    <div class="welcome-card-body">
+                      <div class="welcome-card-title">Get started</div>
+                      <div class="welcome-card-desc">Learn how to track your expenses and budget.</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <input type="file" id="import-file" accept=".json" class="hidden">
+      </div>
+
+      <div class="tab-panel" id="tab-dashboard">
+        <h2 class="mb-2" id="dash-greeting">welcome back</h2>
+        <div class="grid-3">
+          <div class="card">
+            <div class="card-title">current balance</div>
+            <div class="card-value" id="dash-balance">$0</div>
+            <div class="text-xs muted mt-1" id="dash-balance-sub"></div>
+          </div>
+          <div class="card">
+            <div class="card-title">safe daily budget</div>
+            <div class="card-value" id="dash-daily">$0</div>
+            <div class="text-xs muted mt-1">recommended per day</div>
+          </div>
+          <div class="card">
+            <div class="card-title">payday countdown</div>
+            <div class="card-value warn" id="dash-days">0</div>
+            <div class="text-xs muted mt-1" id="dash-days-sub"></div>
+            <div class="countdown" id="payday-countdown" style="font-size: 1.2rem; font-weight: 600; color: var(--accent); margin-top: 8px; font-family: var(--font-mono); text-align: center; letter-spacing: 1px;">00:00:00</div>
+          </div>
+        </div>
+        <div class="card mt-2">
+          <div class="card-title">add expense</div>
+          <div class="input-row mt-1">
+            <div class="input-group" style="margin-bottom: 0;">
+              <input type="number" id="exp-amount" placeholder="amount (hkd)" min="0">
+            </div>
+            <div class="input-group" style="margin-bottom: 0;">
+              <input type="text" id="exp-desc" placeholder="description (e.g. lunch)" autocomplete="off">
+            </div>
+          </div>
+          <div class="mt-1">
+            <input type="date" id="exp-date" style="padding: 6px 10px; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; color: var(--text); font-family: inherit; font-size: 0.85rem;">
+            <button class="btn btn-small" id="exp-add" style="margin-left: 8px;">add expense</button>
+          </div>
+        </div>
+        <div class="card mt-2">
+          <div class="flex justify-between items-center mb-1">
+            <div class="card-title" style="margin: 0;">recent expenses</div>
+            <div class="text-xs muted" id="exp-total">total: $0</div>
+          </div>
+          <div id="exp-list"></div>
+        </div>
+      </div>
+
+      <div class="tab-panel" id="tab-stats">
+        <h2 class="mb-2">stats</h2>
+        <div class="card">
+          <div class="card-title">pay cycle</div>
+          <div class="cycle-year-tabs" id="cycle-year-tabs"></div>
+          <div class="cycle-selector" id="cycle-chips"></div>
+          <div id="cycle-info" class="text-sm muted mb-2"></div>
+        </div>
+        <div id="stats-charts" class="chart-grid">
+          <div class="card">
+            <div class="card-title">salary breakdown</div>
+            <div class="chart-wrap">
+              <canvas id="chart-breakdown"></canvas>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">daily spending</div>
+            <div class="chart-wrap">
+              <canvas id="chart-daily"></canvas>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">balance trend</div>
+            <div class="chart-wrap">
+              <canvas id="chart-trend"></canvas>
+            </div>
+          </div>
+        </div>
+        <div id="stats-mpf" class="card">
+          <div class="card-title">mpf breakdown</div>
+          <div class="grid-3" id="mpf-grid"></div>
+        </div>
+        <div id="stats-hourly" class="card">
+          <div class="card-title">hourly wage</div>
+          <div class="card-value" id="stat-hourly">$0</div>
+          <div class="text-xs muted mt-1">based on your work hours and days</div>
+        </div>
+      </div>
+
+      <div class="tab-panel" id="tab-profile">
+        <h2 class="mb-2">profile</h2>
+        <div class="card">
+          <div class="input-group">
+            <label>name</label>
+            <input type="text" id="profile-name" autocomplete="off">
+          </div>
+          <div class="input-group">
+            <label>monthly salary (hkd)</label>
+            <input type="number" id="profile-salary" min="0">
+          </div>
+          <div class="input-group" style="margin-bottom: 6px;">
+            <label class="toggle-label">
+              <input type="checkbox" id="profile-custom-mpf" class="toggle-input">
+              <span class="toggle-switch"></span>
+              <span class="toggle-text">i know my actual MPF contribution</span>
+            </label>
+          </div>
+          <div class="input-group" id="custom-mpf-field" style="display: none;">
+            <label>employee MPF contribution (hkd)</label>
+            <input type="number" id="profile-emp-mpf" min="0">
+            <div style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 2px;">your actual deduction from payslip</div>
+          </div>
+          <div class="input-group" id="mpf-hint" style="display: none;">
+            <div style="font-size: 0.75rem; color: var(--text-secondary); line-height: 1.5;">
+              not sure? check your payslip or the <strong style="color: var(--accent);">MPF app</strong> for your exact contribution. leave this off to use the standard estimate.
+            </div>
+          </div>
+          <div class="input-group">
+            <label>payday date (day of month, e.g. 4)</label>
+            <input type="number" id="profile-payday" min="1" max="31">
+          </div>
+          <div class="input-row">
+            <div class="input-group">
+              <label>work hours / day</label>
+              <input type="number" id="profile-hours" min="1" max="24">
+            </div>
+            <div class="input-group">
+              <label>work days / week</label>
+              <input type="number" id="profile-days" min="1" max="7">
+            </div>
+          </div>
+          <div class="input-group">
+            <label>current bank balance (hkd)</label>
+            <input type="number" id="profile-balance" min="0">
+          </div>
+          <button class="btn" id="profile-save">save profile</button>
+        </div>
+      </div>
+
+      <div class="tab-panel" id="tab-timesheet">
+        <h2 class="mb-2">timesheet</h2>
+        <div class="card" style="display: flex; flex-direction: column; align-items: center;">
+          <div style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 8px; text-align: center;">click days to mark when you worked</div>
+          <div class="timesheet-header">
+            <button class="btn btn-small" id="timesheet-prev">&lt;</button>
+            <span id="timesheet-month">june 2026</span>
+            <button class="btn btn-small" id="timesheet-next">&gt;</button>
+          </div>
+          <div class="timesheet-grid" id="timesheet-grid"></div>
+          <div style="display: flex; justify-content: space-between; margin-top: 8px; font-size: 0.75rem; color: var(--text-secondary); width: 100%; max-width: 360px;">
+            <span>days worked: <strong id="timesheet-count" style="color: var(--accent);">0</strong></span>
+            <span id="timesheet-bonus-hint" style="display: none;">bonus active!</span>
+          </div>
+        </div>
+        <div class="card mt-2">
+          <div class="card-title">bonus settings</div>
+          <div class="input-group" style="margin-bottom: 6px;">
+            <label class="toggle-label">
+              <input type="checkbox" id="profile-bonus" class="toggle-input">
+              <span class="toggle-switch"></span>
+              <span class="toggle-text">enable bonus salary for extra days</span>
+            </label>
+          </div>
+          <div class="input-row" id="bonus-fields" style="display: none;">
+            <div class="input-group">
+              <label>bonus after X days</label>
+              <input type="number" id="profile-bonus-threshold" min="1" max="31" value="10">
+            </div>
+            <div class="input-group">
+              <label>bonus salary (hkd)</label>
+              <input type="number" id="profile-bonus-salary" min="0">
+            </div>
+          </div>
+          <div class="input-group" id="bonus-display" style="display: none;">
+            <div style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 6px;">salary estimate</div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.8rem;">
+              <div style="color: var(--text-secondary);">days worked</div>
+              <div style="color: var(--text); text-align: right;" id="bonus-days-worked">0 days</div>
+              <div style="color: var(--text-secondary);">base salary</div>
+              <div style="color: var(--text); text-align: right;" id="bonus-base-salary">$0</div>
+              <div style="color: var(--text-secondary);">bonus salary</div>
+              <div style="color: var(--green); text-align: right;" id="bonus-bonus-salary">$0</div>
+              <div style="color: var(--text); font-weight: 600; border-top: 1px solid var(--border); padding-top: 4px;">total salary</div>
+              <div style="color: var(--accent); font-weight: 600; text-align: right; border-top: 1px solid var(--border); padding-top: 4px;" id="bonus-total-salary">$0</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-panel" id="tab-settings">
+        <h2 class="mb-2">settings</h2>
+        <div class="card" id="settings-ai-card">
+          <div class="input-group">
+            <label>ai api key</label>
+            <input type="password" id="settings-apikey" placeholder="AIza...">
+          </div>
+          <div class="text-xs muted mb-2">used for the ai chat widget on dashboard. your key is stored locally.</div>
+          <button class="btn" id="settings-save">save settings</button>
+        </div>
+        <div class="card mt-2" id="settings-data-card">
+          <div class="card-title">data management</div>
+          <div class="flex gap-2 mt-1">
+            <button class="btn btn-secondary btn-small" id="btn-export">export data</button>
+            <button class="btn btn-secondary btn-small" id="btn-import">import data</button>
+            <input type="file" id="file-import" accept=".json" class="hidden">
+          </div>
+          <button class="btn btn-danger btn-small mt-2" id="btn-reset">reset all data</button>
+          <div class="text-xs muted mt-1">reset clears everything and returns to the welcome screen.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="status-bar">
+      <a href="#" class="status-back" id="status-back-btn">← back</a>
+      <span id="status-text"></span>
+    </div>
+  </div>
+</div>
+</div>
+
+  <button class="ai-btn" id="ai-toggle" title="ai chat">💬</button>
+  <div class="ai-panel" id="ai-panel">
+    <div class="ai-head">
+      <span>ai budget assistant</span>
+      <button class="ai-close" id="ai-close">✕</button>
+    </div>
+    <div class="ai-body" id="ai-body">
+      <p class="muted">ask me anything about your budget! (local mode — no api key set) type "help" for a list of things you can ask.</p>
+    </div>
+    <div class="ai-foot">
+      <input type="text" id="ai-input" placeholder="ask ai...">
+      <button class="btn btn-small" id="ai-send">send</button>
+    </div>
+  </div>
+
+  <div class="toast-container" id="toast-container"></div>
+
+  <div class="help-overlay" id="help-overlay">
+    <div class="help-box">
+      <div class="help-header">
+        <h2>How to use wisewage</h2>
+        <button class="help-close" id="help-close">&#10005;</button>
+      </div>
+      <div class="help-body">
+        <div class="help-step">
+          <div class="help-step-num">1</div>
+          <div class="help-step-body">
+            <div class="help-step-title">Set your profile</div>
+            <div class="help-step-desc">Go to the profile tab and add your name, monthly salary, payday date, work hours, and current bank balance. This is the foundation for all calculations.</div>
+          </div>
+        </div>
+        <div class="help-step">
+          <div class="help-step-num">2</div>
+          <div class="help-step-body">
+            <div class="help-step-title">Add your expenses</div>
+            <div class="help-step-desc">On the dashboard, enter the amount and description (e.g., "lunch", "transport") and click "add expense". Your balance will update automatically.</div>
+          </div>
+        </div>
+        <div class="help-step">
+          <div class="help-step-num">3</div>
+          <div class="help-step-body">
+            <div class="help-step-title">View your stats</div>
+            <div class="help-step-desc">Check the stats tab to see your salary breakdown, daily spending charts, MPF contributions, and balance trends over time.</div>
+          </div>
+        </div>
+        <div class="help-step">
+          <div class="help-step-num">4</div>
+          <div class="help-step-body">
+            <div class="help-step-title">Tips & tricks</div>
+            <div class="help-step-desc">- The safe daily budget shows how much you can spend per day until payday.<br>- Use the AI chat for budget advice.<br>- Export your data regularly as backup.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      var splash = document.getElementById('splash');
+      var appWrapper = document.getElementById('app-wrapper');
+      var warningModal = document.getElementById('warning-modal');
+      var seen = sessionStorage.getItem('wisewage-splash');
+      var warningSeen = sessionStorage.getItem('wisewage-warning');
+
+      function showApp() {
+        if (appWrapper) {
+          appWrapper.classList.remove('main-hidden');
+          appWrapper.classList.add('main-container-enter');
+        }
+      }
+
+      function showWarning() {
+        if (warningModal) warningModal.classList.add('show');
+      }
+
+      function dismissWarning() {
+        if (warningModal) warningModal.classList.remove('show');
+        sessionStorage.setItem('wisewage-warning', '1');
+        showApp();
+      }
+
+      if (seen) {
+        if (splash) splash.classList.add('splash-hidden');
+        if (warningSeen) {
+          showApp();
+        } else {
+          showWarning();
+        }
+      } else {
+        if (splash) {
+          setTimeout(function() {
+            splash.classList.add('splash-fade');
+          }, 1200);
+          setTimeout(function() {
+            splash.classList.add('splash-hidden');
+            if (warningSeen) {
+              showApp();
+            } else {
+              showWarning();
+            }
+          }, 1700);
+        }
+        sessionStorage.setItem('wisewage-splash', '1');
+      }
+
+      // Warning modal buttons
+      var warningContinue = document.getElementById('warning-continue');
+      var warningBack = document.getElementById('warning-back');
+      if (warningContinue) {
+        warningContinue.addEventListener('click', dismissWarning);
+      }
+      if (warningBack) {
+        warningBack.addEventListener('click', function() {
+          window.location.href = 'index.html';
+        });
+      }
+    })();
+  </script>
+  <script src="src/wisewage.js"></script>
+</body>
+</html>

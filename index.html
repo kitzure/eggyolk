@@ -12,7 +12,14 @@
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
-    <div class="container">
+    <div class="splash-screen" id="splash">
+      <div class="splash-content">
+        <span class="splash-icon" id="splash-icon">🍳</span>
+        <h1 class="splash-title">eggyolk</h1>
+        <p class="splash-subtitle">make tools more easy to use</p>
+      </div>
+    </div>
+    <div class="container" id="main-container">
       <header class="site-header">
         <span class="header-icon">🍳</span>
         <h1 class="title-fun">eggyolk</h1>
@@ -33,7 +40,7 @@
           <span class="tool-desc">check your attendance in vtc myportal</span>
         </a>
 
-        <a class="tool-card" href="paycheck-when.html">
+        <a class="tool-card" href="wisewage.html">
           <div class="tool-icon-wrap money">
             <svg class="tool-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/></svg>
           </div>
@@ -47,5 +54,34 @@
         <span class="about-tooltip">about me</span>
       </a>
     </div>
+    <script>
+      (function() {
+        var splash = document.getElementById('splash');
+        var mainContainer = document.getElementById('main-container');
+        var seen = sessionStorage.getItem('eggyolk-splash');
+        if (seen) {
+          if (splash) splash.classList.add('splash-hidden');
+          if (mainContainer) mainContainer.classList.remove('main-hidden');
+        } else {
+          if (mainContainer) mainContainer.classList.add('main-hidden');
+          if (splash) {
+            setTimeout(function() {
+              splash.classList.add('splash-flying');
+            }, 900);
+            setTimeout(function() {
+              if (mainContainer) {
+                mainContainer.classList.remove('main-hidden');
+                mainContainer.classList.add('main-container-enter');
+              }
+              splash.classList.add('splash-fade');
+            }, 1400);
+            setTimeout(function() {
+              splash.classList.add('splash-hidden');
+            }, 1900);
+          }
+          sessionStorage.setItem('eggyolk-splash', '1');
+        }
+      })();
+    </script>
   </body>
 </html>
